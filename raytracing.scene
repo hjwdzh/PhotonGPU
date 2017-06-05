@@ -2,6 +2,7 @@ camera
 	-pos 0 15 -12
 	-up 0 1 0
 	-lookat 0 0 1
+	-fov 120
 
 ambient 
 	1.0 1.0 1.0

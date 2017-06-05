@@ -3,6 +3,7 @@
 glm::vec3 World::camera_up;
 glm::vec3 World::camera_lookat;
 glm::vec3 World::camera;
+float World::fov;
 Light World::lights;
 std::vector<Geometry*> World::objects;
 

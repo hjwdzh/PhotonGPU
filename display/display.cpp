@@ -1,9 +1,7 @@
 #include "../cuda-opengl.h"
 
 extern "C" void
-cudaRender(dim3 grid, dim3 block, int sbytes,
-unsigned int *g_odata,
-int imgw);
+cudaRender(dim3 grid, dim3 block, int sbytes, unsigned int *g_odata, int imgw, int imgh);
 
 // copy image and process using CUDA
 void RenderImage()
@@ -25,7 +23,7 @@ void RenderImage()
 	//dim3 block(16, 16, 1);
 	dim3 grid(image_width / block.x, image_height / block.y, 1);
 	// execute CUDA kernel
-	cudaRender(grid, block, 0, out_data, image_width);
+	cudaRender(grid, block, 0, out_data, image_width, image_height);
 
 
 	// CUDA generated data in cuda memory or in a mapped PBO made of BGRA 8 bits

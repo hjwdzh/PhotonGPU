@@ -140,8 +140,13 @@ bool loadScene(
 	while (is >> buffer) {
 		if (strcmp(buffer, "camera") == 0) {
 			int tmp = 0;
-			while (tmp != 7) {
+			while (tmp != 15) {
 				is >> buffer;
+				if (strcmp(buffer, "-fov") == 0) {
+					tmp += 8;
+					is >> buffer;
+					sscanf(buffer, "%f", &World::fov);
+				}
 				if (strcmp(buffer, "-pos") == 0) {
 					tmp += 1;
 					is >> buffer;

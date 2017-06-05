@@ -18,6 +18,7 @@ class World
 public:
 	// camera
 	static glm::vec3 camera_up, camera_lookat, camera;
+	static float fov;
 	// lights
 	static Light lights;
 	// geometries

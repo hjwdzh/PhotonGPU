@@ -15,11 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="app\CudaGLInterp.cu">
-      <Filter>app</Filter>
-    </CudaCompile>
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="app\main.cpp">
       <Filter>app</Filter>
     </ClCompile>
@@ -47,5 +42,10 @@
     <ClInclude Include="scene\world.h">
       <Filter>scene</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="display\render.cu">
+      <Filter>display</Filter>
+    </CudaCompile>
   </ItemGroup>
 </Project>

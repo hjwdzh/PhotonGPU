@@ -19,9 +19,6 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="app\CudaGLInterp.cu" />
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="app\main.cpp" />
     <ClCompile Include="display\display.cpp" />
     <ClCompile Include="loader\objloader.cpp" />
@@ -33,6 +30,9 @@
     <ClInclude Include="scene\geometry.h" />
     <ClInclude Include="scene\light.h" />
     <ClInclude Include="scene\world.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="display\render.cu" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{F8AE9AF8-CF6D-449C-B736-0135EE92233E}</ProjectGuid>
