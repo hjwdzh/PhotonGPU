@@ -386,6 +386,7 @@ main(int argc, char **argv)
 	printf("Load Scene...\n");
 	loadScene("raytracing.scene", World::objects);
 	g_world.GenerateGeometries();
+//	testCPU();
 	printf("%s Starting...\n\n", argv[0]);
 	if (checkCmdLineFlag(argc, (const char **)argv, "file"))
 	{
