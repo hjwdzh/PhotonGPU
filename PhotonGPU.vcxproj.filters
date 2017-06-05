@@ -27,6 +27,9 @@
     <ClCompile Include="scene\world.cpp">
       <Filter>scene</Filter>
     </ClCompile>
+    <ClCompile Include="display\testCPU.cpp">
+      <Filter>app</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cuda-opengl.h" />

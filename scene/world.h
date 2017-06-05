@@ -26,7 +26,16 @@ public:
 	// methods
 	int num_triangles, num_objects;
 	void GenerateGeometries();
-	float *vertexBuffer, *normalBuffer, *texBuffer;
+
+	std::vector<float> vertex_buffer;
+	std::vector<float> normal_buffer;
+	std::vector<float> tex_buffer;
+	std::vector<int> index_buffer;
+	std::vector<InstanceData> material;
+
+	glm::vec3 *vertexBuffer;
+	glm::vec3 *normalBuffer;
+	glm::vec2 *texBuffer;
 	int *indexBuffer;
 	InstanceData* materialBuffer;
 

@@ -26,6 +26,34 @@ plane.obj
 	-rotate y 270
 	-offset 0 -1450 0
 	-tex sky_bottom.bmp
+camera
+	-pos 0 15 -12
+	-up 0 1 0
+	-lookat 0 0 1
+	-fov 120
+
+ambient 
+	1.0 1.0 1.0
+
+direct_light
+	-dir 0.5774 -0.5774 0.5774
+	-color 0.5 0.5 0.5
+
+direct_light
+	-dir -0.5774 -0.5774 -0.5774
+	-color 0.5 0.5 0.5
+
+point_light
+	-pos -20 20 5
+	-color 1 1 1
+
+plane.obj
+	-kd 0
+	-ks 0
+	-scale 2000 1 -2000
+	-rotate y 270
+	-offset 0 -1450 0
+	-tex sky_bottom.bmp
 
 plane.obj
 	-kd 0

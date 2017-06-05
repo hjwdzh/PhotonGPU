@@ -146,7 +146,7 @@ bool loadScene(
 					tmp += 8;
 					is >> buffer;
 					sscanf(buffer, "%f", &World::fov);
-				}
+				} else
 				if (strcmp(buffer, "-pos") == 0) {
 					tmp += 1;
 					is >> buffer;

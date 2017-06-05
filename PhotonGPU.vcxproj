@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClCompile Include="app\main.cpp" />
     <ClCompile Include="display\display.cpp" />
+    <ClCompile Include="display\testCPU.cpp" />
     <ClCompile Include="loader\objloader.cpp" />
     <ClCompile Include="scene\world.cpp" />
   </ItemGroup>

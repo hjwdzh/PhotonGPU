@@ -13,11 +13,11 @@ void World::GenerateGeometries()
 	num_objects = objects.size();
 	for (int i = 0; i < num_objects; ++i)
 		num_triangles += objects[i]->vertex.size() / 3;
-	std::vector<float> vertex_buffer(num_triangles * 9);
-	std::vector<float> normal_buffer(num_triangles * 9);
-	std::vector<float> tex_buffer(num_triangles * 6);
-	std::vector<int> index_buffer(num_triangles);
-	std::vector<InstanceData> material(num_objects);
+	vertex_buffer.resize(num_triangles * 9);
+	normal_buffer.resize(num_triangles * 9);
+	tex_buffer.resize(num_triangles * 6);
+	index_buffer.resize(num_triangles);
+	material.resize(num_objects);
 	float* v_ptr = vertex_buffer.data(), *n_ptr = normal_buffer.data(), *t_ptr = tex_buffer.data();
 	InstanceData* m_ptr = material.data();
 	int s = 0;
@@ -52,6 +52,7 @@ void World::GenerateGeometries()
 		m_ptr->kf = objects[i]->kf;
 		m_ptr->nr = objects[i]->nr;
 		m_ptr->alpha = objects[i]->alpha;
+		m_ptr++;
 	}
 	cudaMalloc(&vertexBuffer, sizeof(float) * vertex_buffer.size());
 	cudaMemcpy(vertexBuffer, vertex_buffer.data(), sizeof(float) * vertex_buffer.size(), cudaMemcpyHostToDevice);

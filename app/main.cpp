@@ -375,6 +375,7 @@ deleteTexture(GLuint *tex)
 // Program main
 ////////////////////////////////////////////////////////////////////////////////
 World g_world;
+extern void testCPU();
 int
 main(int argc, char **argv)
 {
@@ -386,7 +387,6 @@ main(int argc, char **argv)
 	loadScene("raytracing.scene", World::objects);
 	g_world.GenerateGeometries();
 	printf("%s Starting...\n\n", argv[0]);
-
 	if (checkCmdLineFlag(argc, (const char **)argv, "file"))
 	{
 

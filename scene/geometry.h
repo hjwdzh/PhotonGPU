@@ -44,7 +44,7 @@ public:
 	}
 
 	void rotation(const glm::vec3& axis, float angle) {
-		 glm::mat4 mat = glm::rotate(glm::mat4(1.0f), angle, axis);
+		 glm::mat4 mat = glm::rotate(glm::mat4(1.0f), angle / 180.0f * 3.141592654f, axis);
 		 rotate = mat * rotate;
 		 x_axis = mat * x_axis;
 		 y_axis = mat * y_axis;
