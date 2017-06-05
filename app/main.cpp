@@ -1,49 +1,4 @@
-/*
-* Copyright 1993-2015 NVIDIA Corporation.  All rights reserved.
-*
-* Please refer to the NVIDIA end user license agreement (EULA) associated
-* with this source code for terms and conditions that govern your use of
-* this software. Any use, reproduction, disclosure, or distribution of
-* this software and related documentation outside the terms of the EULA
-* is strictly prohibited.
-*
-*/
-
-
-// USE_TEXSUBIMAGE2D uses glTexSubImage2D() to update the final result
-// commenting it will make the sample use the other way :
-// map a texture in CUDA and blit the result into it
-//#define USE_TEXSUBIMAGE2D
-
-#if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
-#  define WINDOWS_LEAN_AND_MEAN
-#  define NOMINMAX
-#  include <windows.h>
-#pragma warning(disable:4996)
-#endif
-
-// OpenGL Graphics includes
-#include <GL/glew.h>
-#if defined(__APPLE__) || defined(MACOSX)
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-#include <GLUT/glut.h>
-// Sorry for Apple : unsigned int sampler is not available to you, yet...
-// Let's switch to the use of PBO and glTexSubImage
-#define USE_TEXSUBIMAGE2D
-#else
-#include <GL/freeglut.h>
-#endif
-
-// CUDA includes
-#include <cuda_runtime.h>
-#include <cuda_gl_interop.h>
-
-// CUDA utilities and system includes
-#include <helper_cuda.h>
-#include <helper_cuda_gl.h>
-
-#include <helper_functions.h>
-#include <rendercheck_gl.h>
+#include "../cuda-opengl.h"
 
 // Shared Library Test Functions
 #define MAX_EPSILON 10
@@ -111,10 +66,6 @@ GLuint shDraw;
 
 
 ////////////////////////////////////////////////////////////////////////////////
-extern "C" void
-launch_cudaProcess(dim3 grid, dim3 block, int sbytes,
-unsigned int *g_odata,
-int imgw);
 
 // Forward declarations
 void runStdProgram(int argc, char **argv);
@@ -219,59 +170,6 @@ static const char *glsl_draw_fragshader_src =
 "}\n";
 #endif
 
-// copy image and process using CUDA
-void generateCUDAImage()
-{
-	// run the Cuda kernel
-	unsigned int *out_data;
-
-#ifdef USE_TEXSUBIMAGE2D
-	checkCudaErrors(cudaGraphicsMapResources(1, &cuda_pbo_dest_resource, 0));
-	size_t num_bytes;
-	checkCudaErrors(cudaGraphicsResourceGetMappedPointer((void **)&out_data, &num_bytes,
-		cuda_pbo_dest_resource));
-	//printf("CUDA mapped pointer of pbo_out: May access %ld bytes, expected %d\n", num_bytes, size_tex_data);
-#else
-	out_data = cuda_dest_resource;
-#endif
-	// calculate grid size
-	dim3 block(16, 16, 1);
-	//dim3 block(16, 16, 1);
-	dim3 grid(image_width / block.x, image_height / block.y, 1);
-	// execute CUDA kernel
-	launch_cudaProcess(grid, block, 0, out_data, image_width);
-
-
-	// CUDA generated data in cuda memory or in a mapped PBO made of BGRA 8 bits
-	// 2 solutions, here :
-	// - use glTexSubImage2D(), there is the potential to loose performance in possible hidden conversion
-	// - map the texture and blit the result thanks to CUDA API
-#ifdef USE_TEXSUBIMAGE2D
-	checkCudaErrors(cudaGraphicsUnmapResources(1, &cuda_pbo_dest_resource, 0));
-	glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, pbo_dest);
-
-	glBindTexture(GL_TEXTURE_2D, tex_cudaResult);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0,
-		image_width, image_height,
-		GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-	SDK_CHECK_ERROR_GL();
-	glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
-	glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
-#else
-	// We want to copy cuda_dest_resource data to the texture
-	// map buffer objects to get CUDA device pointers
-	cudaArray *texture_ptr;
-	checkCudaErrors(cudaGraphicsMapResources(1, &cuda_tex_result_resource, 0));
-	checkCudaErrors(cudaGraphicsSubResourceGetMappedArray(&texture_ptr, cuda_tex_result_resource, 0, 0));
-
-	int num_texels = image_width * image_height;
-	int num_values = num_texels * 4;
-	int size_tex_data = sizeof(GLubyte) * num_values;
-	checkCudaErrors(cudaMemcpyToArray(texture_ptr, 0, 0, cuda_dest_resource, size_tex_data, cudaMemcpyDeviceToDevice));
-
-	checkCudaErrors(cudaGraphicsUnmapResources(1, &cuda_tex_result_resource, 0));
-#endif
-}
 
 // display image to the screen as textured quad
 void displayImage(GLuint texture)
@@ -322,6 +220,7 @@ void displayImage(GLuint texture)
 	SDK_CHECK_ERROR_GL();
 }
 
+extern void RenderImage();
 ////////////////////////////////////////////////////////////////////////////////
 //! Display callback
 ////////////////////////////////////////////////////////////////////////////////
@@ -332,7 +231,7 @@ display()
 
 	if (enable_cuda)
 	{
-		generateCUDAImage();
+		RenderImage();
 		displayImage(tex_cudaResult);
 	}
 

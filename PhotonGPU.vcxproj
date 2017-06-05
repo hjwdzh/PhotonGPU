@@ -23,6 +23,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="app\main.cpp" />
+    <ClCompile Include="display\display.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="cuda-opengl.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{F8AE9AF8-CF6D-449C-B736-0135EE92233E}</ProjectGuid>

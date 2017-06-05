@@ -50,7 +50,7 @@ cudaProcess(unsigned int *g_odata, int imgw)
 }
 
 extern "C" void
-launch_cudaProcess(dim3 grid, dim3 block, int sbytes,
+cudaRender(dim3 grid, dim3 block, int sbytes,
 unsigned int *g_odata,
 int imgw)
 {

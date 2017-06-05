@@ -4,6 +4,9 @@
     <Filter Include="app">
       <UniqueIdentifier>{36b37e54-247d-4dbe-ab8f-7a408a089477}</UniqueIdentifier>
     </Filter>
+    <Filter Include="display">
+      <UniqueIdentifier>{df1ce618-f7d5-4cdc-bd90-6699d175c06c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="app\CudaGLInterp.cu">
@@ -14,5 +17,11 @@
     <ClCompile Include="app\main.cpp">
       <Filter>app</Filter>
     </ClCompile>
+    <ClCompile Include="display\display.cpp">
+      <Filter>display</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="cuda-opengl.h" />
   </ItemGroup>
 </Project>
