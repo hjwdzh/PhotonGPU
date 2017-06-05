@@ -369,16 +369,22 @@ deleteTexture(GLuint *tex)
 	*tex = 0;
 }
 
+#include "../loader/objloader.h"
+#include "../scene/world.h"
 ////////////////////////////////////////////////////////////////////////////////
 // Program main
 ////////////////////////////////////////////////////////////////////////////////
+World g_world;
 int
 main(int argc, char **argv)
 {
 #if defined(__linux__)
 	setenv("DISPLAY", ":0", 0);
 #endif
-
+	
+	printf("Load Scene...\n");
+	loadScene("raytracing.scene", World::objects);
+	g_world.GenerateGeometries();
 	printf("%s Starting...\n\n", argv[0]);
 
 	if (checkCmdLineFlag(argc, (const char **)argv, "file"))

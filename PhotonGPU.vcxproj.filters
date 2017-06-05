@@ -7,6 +7,12 @@
     <Filter Include="display">
       <UniqueIdentifier>{df1ce618-f7d5-4cdc-bd90-6699d175c06c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="loader">
+      <UniqueIdentifier>{dd521cbe-6092-4673-adbe-14d44572817e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="scene">
+      <UniqueIdentifier>{83056fbf-7c58-40e1-abcc-fc30558cbb3e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="app\CudaGLInterp.cu">
@@ -20,8 +26,26 @@
     <ClCompile Include="display\display.cpp">
       <Filter>display</Filter>
     </ClCompile>
+    <ClCompile Include="loader\objloader.cpp">
+      <Filter>loader</Filter>
+    </ClCompile>
+    <ClCompile Include="scene\world.cpp">
+      <Filter>scene</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cuda-opengl.h" />
+    <ClInclude Include="loader\objloader.h">
+      <Filter>loader</Filter>
+    </ClInclude>
+    <ClInclude Include="scene\geometry.h">
+      <Filter>scene</Filter>
+    </ClInclude>
+    <ClInclude Include="scene\light.h">
+      <Filter>scene</Filter>
+    </ClInclude>
+    <ClInclude Include="scene\world.h">
+      <Filter>scene</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

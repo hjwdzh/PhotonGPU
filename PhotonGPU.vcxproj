@@ -24,9 +24,15 @@
   <ItemGroup>
     <ClCompile Include="app\main.cpp" />
     <ClCompile Include="display\display.cpp" />
+    <ClCompile Include="loader\objloader.cpp" />
+    <ClCompile Include="scene\world.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cuda-opengl.h" />
+    <ClInclude Include="loader\objloader.h" />
+    <ClInclude Include="scene\geometry.h" />
+    <ClInclude Include="scene\light.h" />
+    <ClInclude Include="scene\world.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{F8AE9AF8-CF6D-449C-B736-0135EE92233E}</ProjectGuid>
@@ -81,12 +87,12 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(SolutionDir)thirdparty\glm;$(SolutionDir)thirdparty\cudahelper\common\inc;$(SolutionDir)thirdparty\freeglut\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(SolutionDir)thirdparty\glew\lib;$(SolutionDir)thirdparty\freeglut\lib\x64;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
+    <IncludePath>$(SolutionDir)thirdparty\opencv\include;$(SolutionDir)thirdparty\glm;$(SolutionDir)thirdparty\cudahelper\common\inc;$(SolutionDir)thirdparty\freeglut\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)thirdparty\opencv\lib;$(SolutionDir)thirdparty\glew\lib;$(SolutionDir)thirdparty\freeglut\lib\x64;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(SolutionDir)thirdparty\glm;$(SolutionDir)thirdparty\cudahelper\common\inc;$(SolutionDir)thirdparty\freeglut\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(SolutionDir)thirdparty\glew\lib;$(SolutionDir)thirdparty\freeglut\lib\x64;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
+    <IncludePath>$(SolutionDir)thirdparty\opencv\include;$(SolutionDir)thirdparty\glm;$(SolutionDir)thirdparty\cudahelper\common\inc;$(SolutionDir)thirdparty\freeglut\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)thirdparty\opencv\lib;$(SolutionDir)thirdparty\glew\lib;$(SolutionDir)thirdparty\freeglut\lib\x64;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -113,11 +119,13 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>glew32.lib;freeglut.lib;cudart.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opencv_core2413d.lib;opencv_highgui2413d.lib;glew32.lib;freeglut.lib;cudart.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>echo copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"
 copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"
+copy "$(SolutionDir)thirdparty\opencv\bin\opencv_highgui2413d.dll" "$(OutDir)"
+copy "$(SolutionDir)thirdparty\opencv\bin\opencv_core2413d.dll" "$(OutDir)"
 copy "$(SolutionDir)thirdparty\glew\bin\glew32.dll" "$(OutDir)"
 copy "$(SolutionDir)thirdparty\freeglut\bin\x64\freeglut.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
@@ -158,11 +166,13 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>glew32.lib;freeglut.lib;cudart.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opencv_core2413.lib;opencv_highgui2413.lib;glew32.lib;freeglut.lib;cudart.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>echo copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"
 copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"
+copy "$(SolutionDir)thirdparty\opencv\bin\opencv_highgui2413.dll" "$(OutDir)"
+copy "$(SolutionDir)thirdparty\opencv\bin\opencv_core2413.dll" "$(OutDir)"
 copy "$(SolutionDir)thirdparty\glew\bin\glew32.dll" "$(OutDir)"
 copy "$(SolutionDir)thirdparty\freeglut\bin\x64\freeglut.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
