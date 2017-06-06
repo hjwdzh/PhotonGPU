@@ -10,16 +10,16 @@ glm::vec3 lighting(glm::vec3 start_camera, glm::vec3 point, glm::vec3 normal, in
 	InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object,
 	int num_direct_light, glm::vec3* direct_lights, glm::vec3* direct_lights_color,
 	int num_point_light, glm::vec3* point_lights, glm::vec3* point_lights_color, glm::vec3 ambient,
-	uchar3* imagesBuffer, glm::ivec3* imageOffsetBuffer, glm::vec3& orig_color);
+	uchar3* imagesBuffer, glm::ivec3* imageOffsetBuffer, glm::vec3& orig_color, glm::ivec3* causticMap);
 void testCPU()
 {
-	int imgw = 512, imgh = 512;
+	int imgw = 128, imgh = 128;
 	cv::Mat mask = cv::Mat::zeros(imgh, imgw, CV_8UC3);
 	for (int i = 0; i < imgh; ++i) {
 		for (int j = 0; j < imgw; ++j) {
-			i = 225;
-			j = 267;
 			printf("%d %d\n", i, j);
+			i = 85;
+			j = 58;
 			float dis_per_pix = tan(World::fov * 0.5 * 3.141592654 / 180.0) / (imgw / 2);
 			glm::vec3 right = glm::cross(World::camera_lookat, World::camera_up);
 			glm::vec3 ray_d = glm::normalize(World::camera_lookat + (j - imgw / 2) * dis_per_pix * right + (imgh / 2 - i) * dis_per_pix * World::camera_up);
@@ -63,7 +63,7 @@ void testCPU()
 							(glm::vec2*)g_world.tex_buffer.data(), g_world.num_objects,
 							g_world.lights.direct_light_dir.size(), g_world.lights.direct_light_dir.data(), g_world.lights.direct_light_color.data(), 
 							g_world.lights.point_light_pos.size(), g_world.lights.point_light_pos.data(), g_world.lights.point_light_color.data(), g_world.lights.ambient, 
-							g_world.tex_images.data(), g_world.tex_offsets.data(), orig_color);
+							g_world.tex_images.data(), g_world.tex_offsets.data(), orig_color, g_world.causticMap.data());
 						color_stack[node] = orig_color;
 						normal_stack[node] = normal3;
 						ray_d = to_stack[node];

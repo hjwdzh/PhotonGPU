@@ -37,6 +37,8 @@ public:
 
 	std::vector<InstanceData> material;
 
+	std::vector<glm::ivec3> causticMap;
+
 	glm::vec3 *vertexBuffer;
 	glm::vec3 *normalBuffer;
 	glm::vec2 *texBuffer;
@@ -50,6 +52,8 @@ public:
 
 	uchar3* texImagesBuffer;
 	glm::ivec3* texOffsetBuffer;
+
+	glm::ivec3* causticMapBuffer;
 };
 
 extern World g_world;

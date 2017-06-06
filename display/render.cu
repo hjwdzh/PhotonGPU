@@ -17,6 +17,8 @@
 #define PATH_DEPTH 10
 #define PATH_MAX_DEPTH 3
 #define NUM_SAMPLE 1
+#define CAUSTIC_X_MIN -128
+#define CAUSTIC_MAP_DIS 0.5
 
 __device__ __host__ float clamp(float x, float a, float b)
 {
@@ -91,7 +93,6 @@ float tracing(glm::vec3 ray_o_o, glm::vec3 ray_t_o, float shadow, int& tri, int&
 	tri = -1;
 	int j = 0;
 	for (int k = 0; k < num_object; ++k) {
-
 		glm::vec3& x = instanceData[k].offset;
 		glm::vec3& axisX = instanceData[k].axisX;
 		glm::vec3& axisY = instanceData[k].axisY;
@@ -181,11 +182,68 @@ glm::vec3 fetchTex(glm::vec2 uv, int objIndex, uchar3* imagesBuffer, glm::ivec3*
 }
 
 __device__ __host__
+void renderCaustic(glm::ivec3* causticMap, glm::vec3 ray_o, glm::vec3 ray_t, glm::vec3 light,
+	InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object) {
+	int tri_index, obj_index;
+	glm::vec4 hit_point, normal;
+	glm::vec2 uv;
+	float depth = tracing(ray_o, ray_t, -1, tri_index, obj_index, hit_point, uv, normal, instanceData, vertexBuffer, normalBuffer, texBuffer, num_object);
+	int steps = 0;
+	while (depth < 1e20 && (instanceData[obj_index].kr != 0 || instanceData[obj_index].kf != 0)) {
+		if (instanceData[obj_index].kr != 0) {
+			ray_o = glm::vec3(hit_point.x, hit_point.y, hit_point.z);
+			ray_t = glm::reflect(ray_t, glm::vec3(normal.x, normal.y, normal.z));
+			light *= instanceData[obj_index].kr;
+		} 
+		else if (instanceData[obj_index].kf != 0) {
+			float nr = instanceData[obj_index].nr;
+			glm::vec3 normal3(normal.x, normal.y, normal.z);
+			float cost = glm::dot(normal3, ray_t);
+			if (cost < 0) {
+				nr = 1 / nr;
+				cost = -cost;
+			}
+			else {
+				normal3 = -normal3;
+			}
+			float rootContent = 1 - nr * nr * (1 - cost * cost);
+			if (rootContent >= 0) {
+				ray_o = glm::vec3(hit_point.x, hit_point.y, hit_point.z);
+				ray_t = (nr * cost - sqrt(rootContent)) * normal3 + nr * ray_t;
+				light *= instanceData[obj_index].kf;
+			}
+			else {
+				ray_o = glm::vec3(hit_point.x, hit_point.y, hit_point.z);
+				ray_t = glm::reflect(ray_t, glm::vec3(normal.x, normal.y, normal.z));
+			}
+		}
+		steps++;
+		if (steps > 2)
+			break;
+		depth = tracing(ray_o, ray_t, -1, tri_index, obj_index, hit_point, uv, normal, instanceData, vertexBuffer, normalBuffer, texBuffer, num_object);
+	}
+	if (obj_index == 0) {
+		int x = (hit_point.x - CAUSTIC_X_MIN) / CAUSTIC_MAP_DIS;
+		int y = (hit_point.z - CAUSTIC_X_MIN) / CAUSTIC_MAP_DIS;
+		if (x < 512 && y < 512 && x >= 0 && y >= 0) {
+			auto& p = causticMap[y * 512 + x];
+			p.x += light.x * 255;
+			p.y += light.y * 255;
+			p.z += light.z * 255;
+//			atomicAdd(&p.x, (int)(light.x * 255));
+//			atomicAdd(&p.y, (int)(light.y * 255));
+//			atomicAdd(&p.z, (int)(light.z * 255));
+		}
+	}
+}
+
+
+__device__ __host__
 glm::vec3 lighting(glm::vec3 start_camera, glm::vec3 point, glm::vec3 normal, int tri_index, glm::vec2 uv, int obj_index,
 	InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object,
 	int num_direct_light, glm::vec3* direct_lights, glm::vec3* direct_lights_color,
 	int num_point_light, glm::vec3* point_lights, glm::vec3* point_lights_color, glm::vec3 ambient,
-	uchar3* imagesBuffer, glm::ivec3* imageOffsetBuffer, glm::vec3& orig_color) {
+	uchar3* imagesBuffer, glm::ivec3* imageOffsetBuffer, glm::vec3& orig_color, glm::ivec3* causticMap) {
 	float kd = instanceData[obj_index].kd;
 	float ks = instanceData[obj_index].ks;//texture2D(materialSampler, vec2(1.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r;
 	float ka = instanceData[obj_index].ka;// texture2D(materialSampler, vec2(16.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r;
@@ -204,10 +262,14 @@ glm::vec3 lighting(glm::vec3 start_camera, glm::vec3 point, glm::vec3 normal, in
 		if (intensity < 0)
 			continue;
 		float depth = tracing(point, -direct_lights[i], 100, t1, t2, v2, v1, v3, instanceData, vertexBuffer, normalBuffer, texBuffer, num_object);
-		if (depth < 1000)
+		if (depth < 1000) {
+			if (obj_index == 0)
+				renderCaustic(causticMap, point - 1000.0f * direct_lights[i], direct_lights[i], direct_lights_color[i] / glm::dot(normal, eye_dir),
+					instanceData, vertexBuffer, normalBuffer, texBuffer, num_object);
 			continue;
+		}
 		color += intensity * (orig_color * direct_lights_color[i] * kd
-			+ clamp((float)pow(glm::dot(glm::reflect(direct_lights[i], normal), eye_dir), 20), 0.0f, 1.f) * ks * direct_lights_color[i]);
+			+ clamp((float)pow(glm::dot(glm::reflect(direct_lights[i], normal), eye_dir), alpha), 0.0f, 1.f) * ks * direct_lights_color[i]);
 	}
 	for (int i = 0; i < num_point_light; ++i) {
 		glm::vec3 dis = point - point_lights[i];
@@ -234,7 +296,8 @@ glm::vec3 cam_up, glm::vec3 cam_forward, glm::vec3 right, glm::vec3 cam_pos, flo
 	InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object,
 	int num_direct_lights, glm::vec3* direct_lights, glm::vec3* direct_lights_color,
 	int num_point_lights, glm::vec3* point_lights, glm::vec3* point_lights_color, glm::vec3 ambient,
-	uchar3* imagesBuffer, glm::ivec3* imageOffsetBuffer)
+	uchar3* imagesBuffer, glm::ivec3* imageOffsetBuffer,
+	glm::ivec3* causticMap)
 {
 	extern __shared__ uchar4 sdata[];
 
@@ -280,7 +343,8 @@ glm::vec3 cam_up, glm::vec3 cam_forward, glm::vec3 right, glm::vec3 cam_pos, flo
 				normal3 = glm::vec3(normal.x, normal.y, normal.z);
 				glm::vec3 orig_color;
 				light_stack[node] = lighting(from_stack[node], hit_point3, normal3, tri_index, uv, obj_index, instanceData, vertexBuffer, normalBuffer, texBuffer, num_object,
-					num_direct_lights, direct_lights, direct_lights_color, num_point_lights, point_lights, point_lights_color, ambient, imagesBuffer, imageOffsetBuffer, orig_color);
+					num_direct_lights, direct_lights, direct_lights_color, num_point_lights, point_lights, point_lights_color, ambient, 
+					imagesBuffer, imageOffsetBuffer, orig_color, causticMap);
 				color_stack[node] = orig_color;
 				normal_stack[node] = normal3;
 				ray_d = to_stack[node];
@@ -423,17 +487,70 @@ filter(unsigned int *g_odata, int imgw, int imgh) {
 	}
 }
 
+
+__global__ void
+ClearCausticMap(glm::ivec3 *g_odata, int imgw, int imgh) {
+	int tx = threadIdx.x;
+	int ty = threadIdx.y;
+	int bw = blockDim.x;
+	int bh = blockDim.y;
+	int x = blockIdx.x*bw + tx;
+	int y = blockIdx.y*bh + ty;
+	g_odata[y * imgw + x] = glm::ivec3(0, 0, 0);
+}
+
+
+__global__ void
+combineCaustic(unsigned int *g_odata, glm::ivec3* causticMap, int imgw, int imgh,
+glm::vec3 cam_up, glm::vec3 cam_forward, glm::vec3 right, glm::vec3 cam_pos, float dis_per_pix,
+InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object) {
+	int tx = threadIdx.x;
+	int ty = threadIdx.y;
+	int bw = blockDim.x;
+	int bh = blockDim.y;
+	int x = blockIdx.x*bw + tx;
+	int y = blockIdx.y*bh + ty;
+
+	glm::vec3 ray_p = cam_pos;
+	glm::vec3 ray_d = glm::normalize(cam_forward + (x - imgw / 2) * dis_per_pix * right + (y - imgh / 2) * dis_per_pix * cam_up);
+	glm::vec3 color(0, 0, 0);
+	int tri_index, obj_index;
+
+	glm::vec4 hit_point, normal;
+	glm::vec2 uv;
+	float depth;
+	depth = tracing(ray_p, ray_d, -1, tri_index, obj_index, hit_point, uv, normal, instanceData, vertexBuffer, normalBuffer, texBuffer, num_object);
+	if (obj_index == 0) {
+		int rx = (hit_point.x - CAUSTIC_X_MIN) / CAUSTIC_MAP_DIS;
+		int ry = (hit_point.z - CAUSTIC_X_MIN) / CAUSTIC_MAP_DIS;
+		if (rx < 512 && ry < 512 && rx >= 0 && ry >= 0) {
+			auto& p = causticMap[ry * 512 + rx];
+			glm::vec3 np = Inttorgb(g_odata[y * imgw + x]);
+			np += p;
+			np.x = clamp(np.x, 0.f, 255.f);
+			np.y = clamp(np.y, 0.f, 255.f);
+			np.z = clamp(np.z, 0.f, 255.f);
+			g_odata[y * imgw + x] = rgbToInt(np.x, np.y, np.z);
+		}
+	}
+}
+
 extern "C" void
 cudaRender(dim3 grid, dim3 block, int sbytes, unsigned int *g_odata, int imgw, int imgh)
 {
 	static float count = 1;
 	float dis_per_pix = tan(World::fov * 0.5 * 3.141592654 / 180.0) / (imgw / 2);
 	glm::vec3 right = glm::cross(World::camera_lookat, World::camera_up);
+	ClearCausticMap << < grid, block, sbytes >> >(g_world.causticMapBuffer, imgw, imgh);
 	render << < grid, block, sbytes >> >(g_odata, imgw, imgh,
 		World::camera_up, World::camera_lookat, right, World::camera, dis_per_pix,
 		g_world.materialBuffer, g_world.vertexBuffer, g_world.normalBuffer, g_world.texBuffer, g_world.num_objects,
 		g_world.lights.direct_light_dir.size(), g_world.directLightsBuffer, g_world.directLightsColorBuffer,
 		g_world.lights.point_light_pos.size(), g_world.pointLightsBuffer, g_world.pointLightsColorBuffer, g_world.lights.ambient * count,
-		g_world.texImagesBuffer, g_world.texOffsetBuffer);
+		g_world.texImagesBuffer, g_world.texOffsetBuffer,
+		g_world.causticMapBuffer);
 	filter << < grid, block, sbytes >> >(g_odata, imgw, imgh);
+	combineCaustic << < grid, block, sbytes >> >(g_odata, g_world.causticMapBuffer, imgw, imgh,
+		World::camera_up, World::camera_lookat, right, World::camera, dis_per_pix,
+		g_world.materialBuffer, g_world.vertexBuffer, g_world.normalBuffer, g_world.texBuffer, g_world.num_objects);
 }

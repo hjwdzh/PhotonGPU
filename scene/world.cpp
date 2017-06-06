@@ -90,4 +90,7 @@ void World::GenerateGeometries()
 	cudaMemcpy(texOffsetBuffer, tex_offsets.data(), sizeof(glm::ivec3) * tex_offsets.size(), cudaMemcpyHostToDevice);
 	cudaMalloc(&texImagesBuffer, sizeof(uchar3) * tex_images.size());
 	cudaMemcpy(texImagesBuffer, tex_images.data(), sizeof(uchar3) * tex_images.size(), cudaMemcpyHostToDevice);
+
+	causticMap.resize(512 * 512);
+	cudaMalloc(&causticMapBuffer, sizeof(glm::ivec3) * causticMap.size());
 }
