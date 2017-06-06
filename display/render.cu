@@ -14,6 +14,8 @@
 #include <helper_cuda.h>
 #include "../scene/world.h"
 
+#define PATH_DEPTH 5
+#define PATH_MAX_DEPTH 3
 #define NUM_SAMPLE 1
 
 __device__ __host__ float clamp(float x, float a, float b)
@@ -172,13 +174,13 @@ glm::vec3 lighting(glm::vec3 start_camera, glm::vec3 point, glm::vec3 normal, in
 	InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object,
 	int num_direct_light, glm::vec3* direct_lights, glm::vec3* direct_lights_color,
 	int num_point_light, glm::vec3* point_lights, glm::vec3* point_lights_color, glm::vec3 ambient,
-	uchar3* imagesBuffer, glm::ivec3* imageOffsetBuffer) {
+	uchar3* imagesBuffer, glm::ivec3* imageOffsetBuffer, glm::vec3& orig_color) {
 	float kd = instanceData[obj_index].kd;
 	float ks = instanceData[obj_index].ks;//texture2D(materialSampler, vec2(1.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r;
 	float ka = instanceData[obj_index].ka;// texture2D(materialSampler, vec2(16.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r;
 	float alpha = instanceData[obj_index].alpha;// texture2D(materialSampler, vec2(20.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r;
 	
-	glm::vec3 orig_color = fetchTex(uv, obj_index, imagesBuffer, imageOffsetBuffer);
+	orig_color = fetchTex(uv, obj_index, imagesBuffer, imageOffsetBuffer);
 //	int tex = int(0.1 + texture2D(materialSampler, vec2(2.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r);
 //	orig_color = texture2D(renderSampler[tex], uv).rgb;
 	glm::vec3 color = ka * orig_color * ambient;
@@ -233,49 +235,137 @@ glm::vec3 cam_up, glm::vec3 cam_forward, glm::vec3 right, glm::vec3 cam_pos, flo
 	int y = blockIdx.y*bh + ty;
 
 	glm::vec3 ray_p = cam_pos;
-//	uchar4 c4 = make_uchar4((float)x / imgw * 255, (float)y / imgh * 255, 0, 255);
+	glm::vec3 ray_d = glm::normalize(cam_forward + (x - imgw / 2) * dis_per_pix * right + (y - imgh / 2) * dis_per_pix * cam_up);
 	glm::vec3 color(0, 0, 0);
-	glm::vec2 noises[NUM_SAMPLE];
-	noises[0] = glm::vec2(0, 0);
-	for (int i = 0; i < NUM_SAMPLE; ++i) {
-		glm::vec3 ray_d = glm::normalize(cam_forward + (noises[i].x + x - imgw / 2) * dis_per_pix * right + (noises[i].y + y - imgh / 2) * dis_per_pix * cam_up);
-		uchar4 c4 = make_uchar4(ray_d.x * 255.0, ray_d.y * 255.0, ray_d.z * 255.0, 255);
-		g_odata[y*imgw + x] = rgbToInt(c4.x, c4.y, c4.z);
-		int tri_index, obj_index;
-		glm::vec4 hit_point;
-		glm::vec2 uv;
-		glm::vec4 normal;
-		glm::vec3 orig_color;
-		float depth = tracing(ray_p, ray_d, -1, tri_index, obj_index, hit_point, uv, normal, 
-			instanceData, vertexBuffer, normalBuffer, texBuffer, num_object);
-		if (depth < 1e20) {
-			glm::vec3 normal3(normal.x, normal.y, normal.z);
-			glm::vec3 hit_point3(hit_point.x, hit_point.y, hit_point.z);
-			color += lighting(ray_p, hit_point3, normal3, tri_index, uv, obj_index, instanceData,
-				vertexBuffer, normalBuffer, texBuffer, num_object,
-				num_direct_lights, direct_lights, direct_lights_color,
-				num_point_lights, point_lights, point_lights_color, ambient,
-				imagesBuffer, imageOffsetBuffer);
+	int tri_index, obj_index;
+
+	int path_state[PATH_DEPTH];
+	int mat_stack[PATH_DEPTH];
+	glm::vec3 light_stack[PATH_DEPTH];
+	glm::vec3 color_stack[PATH_DEPTH];
+	glm::vec3 from_stack[PATH_DEPTH];
+	glm::vec3 to_stack[PATH_DEPTH];
+	glm::vec3 normal_stack[PATH_DEPTH];
+	int node = 0;
+	path_state[node] = 0;
+	from_stack[node] = ray_p;
+	to_stack[node] = ray_d;
+	color_stack[node] = glm::vec3(0, 0, 0);
+	light_stack[node] = glm::vec3(0, 0, 0);
+	float nr;
+	int hit_mat = 0;
+	glm::vec4 hit_point;
+	glm::vec2 uv;
+	glm::vec4 normal;
+	glm::vec3 normal3;
+	glm::vec3 hit_point3;
+	while (node >= 0) {
+		if (path_state[node] == 0) {
+			path_state[node] = 1;
+			float depth;
+			depth = tracing(from_stack[node], to_stack[node], -1, tri_index, obj_index, hit_point, uv, normal, instanceData, vertexBuffer, normalBuffer, texBuffer, num_object);
+			if (depth < 1e20) {
+				hit_point3 = glm::vec3(hit_point.x, hit_point.y, hit_point.z);
+				normal3 = glm::vec3(normal.x, normal.y, normal.z);
+				glm::vec3 orig_color;
+				light_stack[node] = lighting(from_stack[node], hit_point3, normal3, tri_index, uv, obj_index, instanceData, vertexBuffer, normalBuffer, texBuffer, num_object,
+					num_direct_lights, direct_lights, direct_lights_color, num_point_lights, point_lights, point_lights_color, ambient, imagesBuffer, imageOffsetBuffer, orig_color);
+				color_stack[node] = orig_color;
+				normal_stack[node] = normal3;
+				ray_d = to_stack[node];
+				to_stack[node] = hit_point3;
+				mat_stack[node] = obj_index;
+				float kr = instanceData[obj_index].kr;
+				if (kr > 0 && node < PATH_DEPTH - 1) {
+					node += 1;
+					path_state[node] = 0;
+					from_stack[node] = hit_point3;
+					to_stack[node] = ray_d - 2 * glm::dot(ray_d, normal3) * normal3;
+					light_stack[node] = glm::vec3(0, 0, 0);
+					continue;
+				}
+			}
+			else {
+				path_state[node] = 3;
+			}
 		}
-		else {
-			color = glm::vec3(0, 0, 0);
+		if (path_state[node] == 1) {
+			path_state[node] = 2;
+			obj_index = mat_stack[node];
+			float kf = instanceData[obj_index].kf;
+			if (kf > 0 && node < PATH_DEPTH - 1) {
+				nr = instanceData[obj_index].nr;
+				normal3 = normal_stack[node];
+				ray_d = glm::normalize(to_stack[node] - from_stack[node]);
+				float cost = glm::dot(normal3, ray_d);
+				if (cost < 0) {
+					nr = 1 / nr;
+					cost = -cost;
+				}
+				else {
+					normal = -normal;
+				}
+				float rootContent = 1 - nr * nr * (1 - cost * cost);
+				if (rootContent >= 0) {
+					rootContent = sqrt(rootContent);
+					node += 1;
+					path_state[node] = 0;
+					from_stack[node] = to_stack[node - 1];
+					to_stack[node] = (nr * cost - rootContent) * normal3 + nr * ray_d;
+					light_stack[node] = glm::vec3(0, 0, 0);
+					continue;
+				}
+			}
+		}
+		if (path_state[node] == 2) {
+			path_state[node] = 3;
+			obj_index = mat_stack[node];
+			/*float ks = texture2D(materialSampler, vec2(1.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r;
+			if (hit_mat < use_path && node < PATH_DEPTH - 1 && ks > 0) {
+				normal = normal_stack[node];
+				ray_t = normalize(to_stack[node] - from_stack[node]);
+				float alpha = texture2D(materialSampler, vec2(20.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r;
+				hit_mat += 1;
+				node += 1;
+				path_state[node] = 0;
+				from_stack[node] = to_stack[node - 1];
+				to_stack[node] = phoneSample(ray_t, normal, alpha);
+				continue;
+			}*/
+		}
+		if (path_state[node] == 3) {
+			if (node == 0)
+				break;
+			int obj_index = mat_stack[node - 1];
+			if (path_state[node - 1] == 1) {
+				light_stack[node - 1] = (1 - instanceData[obj_index].kr) * light_stack[node - 1] 
+					+ instanceData[obj_index].kr * color_stack[node - 1] * light_stack[node] / 255.0f;
+			}
+			else
+				if (path_state[node - 1] == 2) {
+					light_stack[node - 1] = (1 - instanceData[obj_index].kf) * light_stack[node - 1]
+						+ instanceData[obj_index].kf * color_stack[node - 1] * light_stack[node] / 255.0f;
+				}
+				else {
+					hit_mat -= 1;
+					normal3 = normal_stack[node - 1];
+					ray_d = glm::normalize(to_stack[node - 1] - from_stack[node - 1]);
+					float alpha = instanceData[obj_index].alpha;
+					light_stack[node - 1] = (1 - instanceData[obj_index].ks) * light_stack[node - 1]
+						+ instanceData[obj_index].ks * color_stack[node - 1] * light_stack[node] * glm::dot(-ray_d, normal3) / 255.0f;
+				}
+				node -= 1;
 		}
 	}
-	color /= NUM_SAMPLE;
-	uchar4 c4 = make_uchar4(color.r, color.g, color.b, 255);
+
+	uchar4 c4 = make_uchar4(light_stack[0].r, light_stack[0].g, light_stack[0].b, 255);
 	g_odata[y*imgw + x] = rgbToInt(c4.x, c4.y, c4.z);
 }
 
 extern "C" void
 cudaRender(dim3 grid, dim3 block, int sbytes, unsigned int *g_odata, int imgw, int imgh)
 {
-	static float count = 0.5;
-	static float dir = 0.1;
-	count += dir;
-	if (count >= 0.99)
-		dir = -dir;
-	if (count <= 0.01)
-		dir = -dir;
+	static float count = 1;
 	float dis_per_pix = tan(World::fov * 0.5 * 3.141592654 / 180.0) / (imgw / 2);
 	glm::vec3 right = glm::cross(World::camera_lookat, World::camera_up);
 	render << < grid, block, sbytes >> >(g_odata, imgw, imgh,

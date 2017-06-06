@@ -70,7 +70,7 @@ plane.obj
 	-tex sky_back.bmp
 
 
-bunny.obj
+sphere.obj
 	-ka 0
 	-kd 1
 	-kr 1.0
@@ -84,13 +84,13 @@ sphere.obj
 	-ka 0
 	-kd 1
 	-ks 0.0
-	-kr 1.0
+	-kr 0.0
 	-kf 1.0
-	-nr 1.1
+	-nr 3.0
 	-alpha 100
 	-scale 5 5 5
 	-offset -9 15 13
-	-tex blue.bmp
+	-tex white.bmp
 
 cube.obj
 	-ka 0.5
