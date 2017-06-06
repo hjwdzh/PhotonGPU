@@ -1,11 +1,11 @@
 camera
-	-pos 0 15 -12
+	-pos 0 4 -12
 	-up 0 1 0
 	-lookat 0 0 1
 	-fov 120
 
 ambient 
-	1.0 1.0 1.0
+	1 1 1
 
 direct_light
 	-dir 0.5774 -0.5774 0.5774
@@ -20,6 +20,7 @@ point_light
 	-color 1 1 1
 	
 plane.obj
+	-ka 1
 	-kd 0
 	-ks 0
 	-scale 2000 1 -2000
@@ -28,6 +29,7 @@ plane.obj
 	-tex sky_bottom.bmp
 
 plane.obj
+	-ka 1
 	-kd 0
 	-ks 0
 	-scale 2000 -1 2000
@@ -36,6 +38,7 @@ plane.obj
 	-tex sky_top.bmp
 
 plane.obj
+	-ka 1
 	-kd 0
 	-ks 0
 	-scale 2000 1 2000
@@ -44,6 +47,7 @@ plane.obj
 	-tex sky_front.bmp
 
 plane.obj
+	-ka 1
 	-kd 0
 	-ks 0
 	-scale 2000 1 2000
@@ -53,6 +57,7 @@ plane.obj
 	-tex sky_right.bmp
 
 plane.obj
+	-ka 1
 	-kd 0
 	-ks 0
 	-scale 2000 1 2000
@@ -62,6 +67,7 @@ plane.obj
 	-tex sky_left.bmp
 
 plane.obj
+	-ka 1
 	-kd 0
 	-ks 0
 	-scale -2000 1 2000
@@ -69,43 +75,21 @@ plane.obj
 	-offset 0 500 -1950
 	-tex sky_back.bmp
 
-
-sphere.obj
-	-ka 0
+plane.obj
+	-ka 0.6
 	-kd 1
-	-kr 1.0
-	-kf 0.0
-	-alpha 100
-	-scale 5 5 5
-	-offset 3 15 10
-	-tex blue.bmp
+	-ks 0
+	-scale 2000 1 -2000
+	-offset 0 0 0
+	-tex iron.bmp
 
-sphere.obj
-	-ka 0
-	-kd 1
-	-ks 0.0
-	-kr 0.0
-	-kf 1.0
-	-nr 3.0
-	-alpha 100
+bunny.obj
+	-ka 0.5
+	-kd 0
+	-kf 0.8
+	-kd 0.0
+	-nr 1.5
+	-ks 0
 	-scale 5 5 5
-	-offset -9 15 13
+	-offset 0 5 0
 	-tex white.bmp
-
-cube.obj
-	-ka 0.5
-	-ks 1.0
-	-alpha 20
-	-scale 5 5 5
-	-rotate y 30
-	-offset 3 5 10
-	-tex iron.bmp
-
-cube.obj
-	-ka 0.5
-	-ks 1.0
-	-alpha 20
-	-scale 5 5 5
-	-rotate y 30
-	-offset -9 5 13
-	-tex iron.bmp

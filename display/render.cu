@@ -14,7 +14,7 @@
 #include <helper_cuda.h>
 #include "../scene/world.h"
 
-#define PATH_DEPTH 5
+#define PATH_DEPTH 10
 #define PATH_MAX_DEPTH 3
 #define NUM_SAMPLE 1
 
@@ -288,6 +288,7 @@ glm::vec3 cam_up, glm::vec3 cam_forward, glm::vec3 right, glm::vec3 cam_pos, flo
 				mat_stack[node] = obj_index;
 				float kr = instanceData[obj_index].kr;
 				if (kr > 0 && node < PATH_DEPTH - 1) {
+					color_stack[node] = instanceData[obj_index].kr * color_stack[node];
 					node += 1;
 					path_state[node] = 0;
 					from_stack[node] = hit_point3;
@@ -314,10 +315,11 @@ glm::vec3 cam_up, glm::vec3 cam_forward, glm::vec3 right, glm::vec3 cam_pos, flo
 					cost = -cost;
 				}
 				else {
-					normal = -normal;
+					normal3 = -normal3;
 				}
 				float rootContent = 1 - nr * nr * (1 - cost * cost);
 				if (rootContent >= 0) {
+					color_stack[node] = instanceData[obj_index].kf * color_stack[node];
 					rootContent = sqrt(rootContent);
 					node += 1;
 					path_state[node] = 0;
@@ -325,6 +327,22 @@ glm::vec3 cam_up, glm::vec3 cam_forward, glm::vec3 right, glm::vec3 cam_pos, flo
 					to_stack[node] = (nr * cost - rootContent) * normal3 + nr * ray_d;
 					light_stack[node] = glm::vec3(0, 0, 0);
 					continue;
+				}
+				else {
+					float kr = 1;
+					if (kr > 0 && node < PATH_DEPTH - 1) {
+						light_stack[node] = glm::vec3(0, 0, 0);
+						node += 1;
+						path_state[node] = 0;
+						from_stack[node] = to_stack[node - 1];
+						to_stack[node] = ray_d - 2 * glm::dot(ray_d, normal3) * normal3;
+						light_stack[node] = glm::vec3(0, 0, 0);
+						continue;
+					}
+					else {
+						g_odata[y*imgw + x] = 0;
+						return;
+					}
 				}
 			}
 		}
@@ -350,12 +368,12 @@ glm::vec3 cam_up, glm::vec3 cam_forward, glm::vec3 right, glm::vec3 cam_pos, flo
 			int obj_index = mat_stack[node - 1];
 			if (path_state[node - 1] == 1) {
 				light_stack[node - 1] = (1 - instanceData[obj_index].kr) * light_stack[node - 1] 
-					+ instanceData[obj_index].kr * color_stack[node - 1] * light_stack[node] / 255.0f;
+					+ color_stack[node - 1] * light_stack[node] / 255.0f;
 			}
 			else
 				if (path_state[node - 1] == 2) {
 					light_stack[node - 1] = (1 - instanceData[obj_index].kf) * light_stack[node - 1]
-						+ instanceData[obj_index].kf * color_stack[node - 1] * light_stack[node] / 255.0f;
+						+ color_stack[node - 1] * light_stack[node] / 255.0f;
 				}
 				else {
 					hit_mat -= 1;
@@ -385,8 +403,8 @@ filter(unsigned int *g_odata, int imgw, int imgh) {
 	if (g_odata[id] == 0) {
 		glm::vec3 rgb(0, 0, 0);
 		int count = 0;
-		for (int dx = -1; dx <= 1; ++dx) {
-			for (int dy = -1; dy <= 1; ++dy) {
+		for (int dx = -5; dx <= 5; ++dx) {
+			for (int dy = -5; dy <= 5; ++dy) {
 				int nx = x + dx;
 				int ny = y + dy;
 				if (nx >= 0 && nx < imgw && ny >= 0 && ny < imgh) {
@@ -398,10 +416,10 @@ filter(unsigned int *g_odata, int imgw, int imgh) {
 				}
 			}
 		}
-		if (count == 0)
-			g_odata[id] = rgbToInt(255, 0, 0);
-		else
+		if (count > 0)
 			g_odata[id] = rgbToInt(rgb.r / count, rgb.g / count, rgb.b / count);
+		else
+			g_odata[id] = rgbToInt(255, 0, 0);
 	}
 }
 
