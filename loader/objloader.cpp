@@ -123,6 +123,10 @@ bool loadOBJ(
 		// Put the attributes in buffers
 		out_vertices.push_back(vertex);
 		out_uvs     .push_back(uv);
+		if (strcmp(path, "obj/sphere.obj") == 0) {
+			if (glm::dot(temp_normals[normalIndices[i] - 1], vertex) < 0)
+				printf("%lf\n", glm::dot(temp_normals[normalIndices[i] - 1], vertex));
+		}
 		if (smooth)
 			out_normals .push_back(ave_normals[ vertexIndex-1 ]);
 		else

@@ -53,13 +53,13 @@ glm::vec3 v0, glm::vec3 v1, glm::vec3 v2, float& u, float& v) {
 	glm::vec3 s = p - v0;
 	u = f * glm::dot(s, h);
 
-	if (u < 0.0 || u > 1.0)
+	if (u < -1e-5 || u > 1+1e-5)
 		return -1;
 
 	glm::vec3 q = glm::cross(s, e1);
 	v = f * glm::dot(d, q);
 
-	if (v < 0.0 || u + v > 1.0)
+	if (v < -1e-5 || u + v > 1 + 1e-5)
 		return -1;
 
 	// at this stage we can compute t to find out where
@@ -82,6 +82,7 @@ float tracing(glm::vec3 ray_o_o, glm::vec3 ray_t_o, float shadow, int& tri, int&
 	tri = -1;
 	int j = 0;
 	for (int k = 0; k < num_object; ++k) {
+
 		glm::vec3& x = instanceData[k].offset;
 		glm::vec3& axisX = instanceData[k].axisX;
 		glm::vec3& axisY = instanceData[k].axisY;
@@ -97,16 +98,17 @@ float tracing(glm::vec3 ray_o_o, glm::vec3 ray_t_o, float shadow, int& tri, int&
 			* glm::mat4(glm::vec4(1, 0, 0, 0), glm::vec4(0, 1, 0, 0), glm::vec4(0, 0, 1, 0), glm::vec4(-x, 1));
 
 		glm::vec4 ray_o4 = (inv_convert * glm::vec4(ray_o_o, 1));
-		glm::vec4 ray_t4 = (inv_convert * glm::vec4(ray_t_o, 0));
+		glm::vec4 ray_t4 = inv_convert * glm::vec4(ray_t_o, 0);
+		float len = glm::length(ray_t4);
 		glm::vec3 ray_o(ray_o4.x, ray_o4.y, ray_o4.z);
-		glm::vec3 ray_t(ray_t4.x, ray_t4.y, ray_t4.z);
+		glm::vec3 ray_t(ray_t4.x / len, ray_t4.y / len, ray_t4.z / len);
 		int next_object = instanceData[k].s;
 		while (j < next_object) {
 			glm::vec3& v1 = vertexBuffer[j];
 			glm::vec3& v2 = vertexBuffer[j + 1];
 			glm::vec3& v3 = vertexBuffer[j + 2];
 			float u, v;
-			float t = rayIntersectsTriangle(ray_o, ray_t, v1, v2, v3, u, v);
+			float t = rayIntersectsTriangle(ray_o, ray_t, v1, v2, v3, u, v) / len;
 			if (t > 0 && t < depth) {
 				depth = t;
 				hit_point = (convert * (ray_o4 + ray_t4 * depth));
@@ -374,4 +376,5 @@ cudaRender(dim3 grid, dim3 block, int sbytes, unsigned int *g_odata, int imgw, i
 		g_world.lights.direct_light_dir.size(), g_world.directLightsBuffer, g_world.directLightsColorBuffer,
 		g_world.lights.point_light_pos.size(), g_world.pointLightsBuffer, g_world.pointLightsColorBuffer, g_world.lights.ambient * count,
 		g_world.texImagesBuffer, g_world.texOffsetBuffer);
+	
 }

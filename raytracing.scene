@@ -18,7 +18,7 @@ direct_light
 point_light
 	-pos -20 20 5
 	-color 1 1 1
-
+	
 plane.obj
 	-kd 0
 	-ks 0

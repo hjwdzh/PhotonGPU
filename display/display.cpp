@@ -24,22 +24,10 @@ void RenderImage()
 	dim3 grid(image_width / block.x, image_height / block.y, 1);
 	// execute CUDA kernel
 	cudaRender(grid, block, 0, out_data, image_width, image_height);
-	/*
+	
 	std::vector<int> imgdata(image_height * image_width);
 	cudaMemcpy(imgdata.data(), out_data, sizeof(int) * imgdata.size(), cudaMemcpyDeviceToHost);
-	cv::Mat img(image_height, image_width, CV_8UC3);
-	for (int i = 0; i < image_height; ++i) {
-		for (int j = 0; j < image_width; ++j) {
-			int t = imgdata[i * image_width + j];
-			int b = t >> 16;
-			int g = (t >> 8) % 256;
-			int r = t % 256;
-			img.at<cv::Vec3b>(i, j) = cv::Vec3b(b, g, r);
-		}
-	}
-	cv::imwrite("image.png", img);
-	exit(0);
-	*/
+	
 	// CUDA generated data in cuda memory or in a mapped PBO made of BGRA 8 bits
 	// 2 solutions, here :
 	// - use glTexSubImage2D(), there is the potential to loose performance in possible hidden conversion

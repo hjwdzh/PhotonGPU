@@ -15,11 +15,9 @@ void testCPU()
 {
 	int imgw = 512, imgh = 512;
 	cv::Mat mask = cv::Mat::zeros(imgh, imgw, CV_8UC3);
-	for (int i = 0; i < imgh; ++i) {
-		printf("%d of %d\n", i, imgh);
-		for (int j = 0; j < imgw; ++j) {
-			j = 255;
-			i = 255;
+	for (int i = 231; i < imgh; ++i) {
+		for (int j = 211; j < imgw; ++j) {
+			printf("%d %d\n", i, j);
 			float dis_per_pix = tan(World::fov * 0.5 * 3.141592654 / 180.0) / (imgw / 2);
 			glm::vec3 right = glm::cross(World::camera_lookat, World::camera_up);
 			glm::vec3 ray_d = glm::normalize(World::camera_lookat + (j - imgw / 2) * dis_per_pix * right + (imgh / 2 - i) * dis_per_pix * World::camera_up);
@@ -74,7 +72,7 @@ void testCPU()
 							node += 1;
 							path_state[node] = 0;
 							from_stack[node] = hit_point3;
-							to_stack[node] = ray_d - 2 * glm::dot(ray_d, normal3) * normal3;
+							to_stack[node] = glm::normalize(ray_d - 2 * glm::dot(ray_d, normal3) * normal3);
 							light_stack[node] = glm::vec3(0, 0, 0);
 							continue;
 						}
@@ -105,7 +103,7 @@ void testCPU()
 							node += 1;
 							path_state[node] = 0;
 							from_stack[node] = to_stack[node - 1];
-							to_stack[node] = (nr * cost - rootContent) * normal3 + nr * ray_d;
+							to_stack[node] = glm::normalize((nr * cost - rootContent) * normal3 + nr * ray_d);
 							light_stack[node] = glm::vec3(0, 0, 0);
 							continue;
 						}
@@ -133,12 +131,10 @@ void testCPU()
 					int obj_index = mat_stack[node - 1];
 					if (path_state[node - 1] == 1) {
 						light_stack[node - 1] += g_world.material[obj_index].kr * color_stack[node - 1] * light_stack[node] / 255.0f;
-						light_stack[node - 1] = light_stack[node];
 					}
 					else
 						if (path_state[node - 1] == 2) {
 							light_stack[node - 1] += g_world.material[obj_index].kf * color_stack[node - 1] * light_stack[node] / 255.0f;
-							light_stack[node - 1] = light_stack[node];
 						}
 						else {
 							hit_mat -= 1;
@@ -146,7 +142,6 @@ void testCPU()
 							ray_d = glm::normalize(to_stack[node - 1] - from_stack[node - 1]);
 							float alpha = g_world.material[obj_index].alpha;
 							light_stack[node - 1] += g_world.material[obj_index].ks * color_stack[node - 1] * light_stack[node] * glm::dot(-ray_d, normal3) / 255.0f;
-							light_stack[node - 1] = light_stack[node];
 						}
 						node -= 1;
 				}
