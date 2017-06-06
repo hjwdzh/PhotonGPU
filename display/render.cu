@@ -134,16 +134,51 @@ float tracing(glm::vec3 ray_o_o, glm::vec3 ray_t_o, float shadow, int& tri, int&
 }
 
 __device__ __host__
+glm::vec3 fetchTex(glm::vec2 uv, int objIndex, uchar3* imagesBuffer, glm::ivec3* imageOffsetBuffer)
+{
+	glm::ivec3& info = imageOffsetBuffer[objIndex];
+	int offset = info.x;
+	int iy = info.y;
+	int ix = info.z;
+	float x = ix * uv.x;
+	float y = iy * uv.y;
+	int lx = x, ly = y;
+	int rx = lx + 1, ry = ly + 1;
+	float wx = x - lx, wy = y - ly;
+	if (lx < 0)
+		lx += wx;
+	if (ly < 0)
+		ly += wy;
+	if (rx >= ix)
+		rx -= ix;
+	if (ry >= iy)
+		ry -= iy;
+	int ind1 = offset + ly * ix + lx;
+	int ind2 = offset + ly * ix + rx;
+	int ind3 = offset + ry * ix + lx;
+	int ind4 = offset + ry * ix + rx;
+	uchar3& c1 = imagesBuffer[ind1];
+	uchar3& c2 = imagesBuffer[ind2];
+	uchar3& c3 = imagesBuffer[ind3];
+	uchar3& c4 = imagesBuffer[ind4];
+	float cx = (c1.x * (1 - wx) + c2.x * wx) * (1 - wy) + (c3.x * (1 - wx) + c4.x * wx) * wy;
+	float cy = (c1.y * (1 - wx) + c2.y * wx) * (1 - wy) + (c3.y * (1 - wx) + c4.y * wx) * wy;
+	float cz = (c1.z * (1 - wx) + c2.z * wx) * (1 - wy) + (c3.z * (1 - wx) + c4.z * wx) * wy;
+	return glm::vec3(cz, cy, cx);
+}
+
+__device__ __host__
 glm::vec3 lighting(glm::vec3 start_camera, glm::vec3 point, glm::vec3 normal, int tri_index, glm::vec2 uv, int obj_index,
 	InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object,
 	int num_direct_light, glm::vec3* direct_lights, glm::vec3* direct_lights_color,
-	int num_point_light, glm::vec3* point_lights, glm::vec3* point_lights_color, glm::vec3 ambient) {
+	int num_point_light, glm::vec3* point_lights, glm::vec3* point_lights_color, glm::vec3 ambient,
+	uchar3* imagesBuffer, glm::ivec3* imageOffsetBuffer) {
 	float kd = instanceData[obj_index].kd;
 	float ks = instanceData[obj_index].ks;//texture2D(materialSampler, vec2(1.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r;
 	float ka = instanceData[obj_index].ka;// texture2D(materialSampler, vec2(16.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r;
 	float alpha = instanceData[obj_index].alpha;// texture2D(materialSampler, vec2(20.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r;
 	
-	glm::vec3 orig_color(255, 255, 255);
+	glm::vec3 orig_color = fetchTex(uv, obj_index, imagesBuffer, imageOffsetBuffer);
 //	int tex = int(0.1 + texture2D(materialSampler, vec2(2.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r);
 //	orig_color = texture2D(renderSampler[tex], uv).rgb;
 	glm::vec3 color = ka * orig_color * ambient;
@@ -185,7 +220,8 @@ render(unsigned int *g_odata, int imgw, int imgh,
 glm::vec3 cam_up, glm::vec3 cam_forward, glm::vec3 right, glm::vec3 cam_pos, float dis_per_pix,
 	InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object,
 	int num_direct_lights, glm::vec3* direct_lights, glm::vec3* direct_lights_color,
-	int num_point_lights, glm::vec3* point_lights, glm::vec3* point_lights_color, glm::vec3 ambient)
+	int num_point_lights, glm::vec3* point_lights, glm::vec3* point_lights_color, glm::vec3 ambient,
+	uchar3* imagesBuffer, glm::ivec3* imageOffsetBuffer)
 {
 	extern __shared__ uchar4 sdata[];
 
@@ -218,7 +254,8 @@ glm::vec3 cam_up, glm::vec3 cam_forward, glm::vec3 right, glm::vec3 cam_pos, flo
 			color += lighting(ray_p, hit_point3, normal3, tri_index, uv, obj_index, instanceData,
 				vertexBuffer, normalBuffer, texBuffer, num_object,
 				num_direct_lights, direct_lights, direct_lights_color,
-				num_point_lights, point_lights, point_lights_color, ambient);
+				num_point_lights, point_lights, point_lights_color, ambient,
+				imagesBuffer, imageOffsetBuffer);
 		}
 		else {
 			color = glm::vec3(0, 0, 0);
@@ -245,5 +282,6 @@ cudaRender(dim3 grid, dim3 block, int sbytes, unsigned int *g_odata, int imgw, i
 		World::camera_up, World::camera_lookat, right, World::camera, dis_per_pix,
 		g_world.materialBuffer, g_world.vertexBuffer, g_world.normalBuffer, g_world.texBuffer, g_world.num_objects,
 		g_world.lights.direct_light_dir.size(), g_world.directLightsBuffer, g_world.directLightsColorBuffer,
-		g_world.lights.point_light_pos.size(), g_world.pointLightsBuffer, g_world.pointLightsColorBuffer, g_world.lights.ambient * count);
+		g_world.lights.point_light_pos.size(), g_world.pointLightsBuffer, g_world.pointLightsColorBuffer, g_world.lights.ambient * count,
+		g_world.texImagesBuffer, g_world.texOffsetBuffer);
 }

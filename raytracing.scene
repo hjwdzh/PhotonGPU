@@ -39,7 +39,6 @@ plane.obj
 	-kd 0
 	-ks 0
 	-scale 2000 1 2000
-	-rotate y 180
 	-rotate x 90
 	-offset 0 500 1950
 	-tex sky_front.bmp
@@ -48,28 +47,28 @@ plane.obj
 	-kd 0
 	-ks 0
 	-scale 2000 1 2000
-	-rotate y -90
+	-rotate y 90
 	-rotate z -90
 	-offset 1950 500 0
-	-tex sky_left.bmp
-
-plane.obj
-	-kd 0
-	-ks 0
-	-scale 2000 1 2000
-	-rotate y 90
-	-rotate z 90
-	-offset -1950 500 0
 	-tex sky_right.bmp
 
 plane.obj
 	-kd 0
 	-ks 0
+	-scale 2000 1 2000
+	-rotate y -90
+	-rotate z 90
+	-offset -1950 500 0
+	-tex sky_left.bmp
+
+plane.obj
+	-kd 0
+	-ks 0
 	-scale -2000 1 2000
-	-rotate y 180
 	-rotate x 90
 	-offset 0 500 -1950
 	-tex sky_back.bmp
+
 
 bunny.obj
 	-ka 0

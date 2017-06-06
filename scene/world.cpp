@@ -54,6 +54,17 @@ void World::GenerateGeometries()
 		m_ptr->alpha = objects[i]->alpha;
 		m_ptr++;
 	}
+
+	tex_offsets.resize(objects.size());
+	int current_offset = 0;
+	for (int i = 0; i < objects.size(); ++i) {
+		tex_offsets[i] = glm::ivec3(current_offset, objects[i]->texImg.rows, objects[i]->texImg.cols);
+		current_offset += objects[i]->texImg.rows * objects[i]->texImg.cols;
+	}
+	tex_images.resize(current_offset);
+	for (int i = 0; i < objects.size(); ++i) {
+		memcpy(tex_images.data() + tex_offsets[i].x, objects[i]->texImg.data, sizeof(uchar3) * objects[i]->texImg.rows * objects[i]->texImg.cols);
+	}
 	cudaMalloc(&vertexBuffer, sizeof(float) * vertex_buffer.size());
 	cudaMemcpy(vertexBuffer, vertex_buffer.data(), sizeof(float) * vertex_buffer.size(), cudaMemcpyHostToDevice);
 	cudaMalloc(&normalBuffer, sizeof(float) * normal_buffer.size());
@@ -74,4 +85,9 @@ void World::GenerateGeometries()
 	cudaMemcpy(pointLightsBuffer, lights.point_light_pos.data(), sizeof(glm::vec3) * lights.point_light_pos.size(), cudaMemcpyHostToDevice);
 	cudaMalloc(&pointLightsColorBuffer, sizeof(glm::vec3) * lights.point_light_color.size());
 	cudaMemcpy(pointLightsColorBuffer, lights.point_light_color.data(), sizeof(glm::vec3) * lights.point_light_color.size(), cudaMemcpyHostToDevice);
+
+	cudaMalloc(&texOffsetBuffer, sizeof(glm::ivec3) * tex_offsets.size());
+	cudaMemcpy(texOffsetBuffer, tex_offsets.data(), sizeof(glm::ivec3) * tex_offsets.size(), cudaMemcpyHostToDevice);
+	cudaMalloc(&texImagesBuffer, sizeof(uchar3) * tex_images.size());
+	cudaMemcpy(texImagesBuffer, tex_images.data(), sizeof(uchar3) * tex_images.size(), cudaMemcpyHostToDevice);
 }

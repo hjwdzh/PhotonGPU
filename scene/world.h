@@ -3,7 +3,7 @@
 #include <glm/glm.hpp>
 #include "light.h"
 #include "geometry.h"
-
+#include "../cuda-opengl.h"
 struct InstanceData
 {
 	float kd, ks;
@@ -31,6 +31,10 @@ public:
 	std::vector<float> normal_buffer;
 	std::vector<float> tex_buffer;
 	std::vector<int> index_buffer;
+
+	std::vector<uchar3> tex_images;
+	std::vector<glm::ivec3> tex_offsets;
+
 	std::vector<InstanceData> material;
 
 	glm::vec3 *vertexBuffer;
@@ -43,6 +47,9 @@ public:
 	glm::vec3 *directLightsColorBuffer;
 	glm::vec3 *pointLightsBuffer;
 	glm::vec3 *pointLightsColorBuffer;
+
+	uchar3* texImagesBuffer;
+	glm::ivec3* texOffsetBuffer;
 };
 
 extern World g_world;
