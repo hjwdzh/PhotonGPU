@@ -73,6 +73,7 @@ plane.obj
 
 bunny.obj
 	-ka 0
+	-kd 1
 	-kr 1.0
 	-kf 0.0
 	-alpha 100
@@ -82,7 +83,7 @@ bunny.obj
 
 sphere.obj
 	-ka 0
-	-kd 0
+	-kd 1
 	-ks 0.0
 	-kr 1.0
 	-kf 1.0

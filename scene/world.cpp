@@ -64,4 +64,14 @@ void World::GenerateGeometries()
 	cudaMemcpy(indexBuffer, index_buffer.data(), sizeof(int) * index_buffer.size(), cudaMemcpyHostToDevice);
 	cudaMalloc(&materialBuffer, sizeof(InstanceData) * material.size());
 	cudaMemcpy(materialBuffer, material.data(), sizeof(InstanceData) * material.size(), cudaMemcpyHostToDevice);
+
+	cudaMalloc(&directLightsBuffer, sizeof(glm::vec3) * lights.direct_light_dir.size());
+	cudaMemcpy(directLightsBuffer, lights.direct_light_dir.data(), sizeof(glm::vec3) * lights.direct_light_dir.size(), cudaMemcpyHostToDevice);
+	cudaMalloc(&directLightsColorBuffer, sizeof(glm::vec3) * lights.direct_light_color.size());
+	cudaMemcpy(directLightsColorBuffer, lights.direct_light_color.data(), sizeof(glm::vec3) * lights.direct_light_color.size(), cudaMemcpyHostToDevice);
+
+	cudaMalloc(&pointLightsBuffer, sizeof(glm::vec3) * lights.point_light_pos.size());
+	cudaMemcpy(pointLightsBuffer, lights.point_light_pos.data(), sizeof(glm::vec3) * lights.point_light_pos.size(), cudaMemcpyHostToDevice);
+	cudaMalloc(&pointLightsColorBuffer, sizeof(glm::vec3) * lights.point_light_color.size());
+	cudaMemcpy(pointLightsColorBuffer, lights.point_light_color.data(), sizeof(glm::vec3) * lights.point_light_color.size(), cudaMemcpyHostToDevice);
 }

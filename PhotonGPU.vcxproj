@@ -35,6 +35,9 @@
   <ItemGroup>
     <CudaCompile Include="display\render.cu" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="raytracing.scene" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{F8AE9AF8-CF6D-449C-B736-0135EE92233E}</ProjectGuid>
     <RootNamespace>PhotonGPU</RootNamespace>

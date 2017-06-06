@@ -51,4 +51,7 @@
       <Filter>display</Filter>
     </CudaCompile>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="raytracing.scene" />
+  </ItemGroup>
 </Project>

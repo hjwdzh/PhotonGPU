@@ -38,7 +38,11 @@ public:
 	glm::vec2 *texBuffer;
 	int *indexBuffer;
 	InstanceData* materialBuffer;
-
+	
+	glm::vec3 *directLightsBuffer;
+	glm::vec3 *directLightsColorBuffer;
+	glm::vec3 *pointLightsBuffer;
+	glm::vec3 *pointLightsColorBuffer;
 };
 
 extern World g_world;

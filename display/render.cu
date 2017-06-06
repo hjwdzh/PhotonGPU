@@ -16,7 +16,7 @@
 
 #define NUM_SAMPLE 1
 
-__device__ float clamp(float x, float a, float b)
+__device__ __host__ float clamp(float x, float a, float b)
 {
 	return max(a, min(b, x));
 }
@@ -134,54 +134,58 @@ float tracing(glm::vec3 ray_o_o, glm::vec3 ray_t_o, float shadow, int& tri, int&
 }
 
 __device__ __host__
-glm::vec3 lighting(glm::vec3 start_camera, glm::vec3 point, glm::vec3 normal, float tri_index, glm::vec2 uv, float obj_index, glm::vec3 orig_color) {
-	/*
-	float kd = texture2D(materialSampler, vec2(0.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r;
-	float ks = texture2D(materialSampler, vec2(1.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r;
-	float ka = texture2D(materialSampler, vec2(16.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r;
-	float alpha = texture2D(materialSampler, vec2(20.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r;
-	int tex = int(0.1 + texture2D(materialSampler, vec2(2.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r);
-	orig_color = texture2D(renderSampler[tex], uv).rgb;
-	vec3 color = ka * orig_color * ambient;
-	vec3 eye_dir = normalize(start_camera - point);
-	float t1, t2;
-	vec2 v1;
-	vec3 v2, v3;
+glm::vec3 lighting(glm::vec3 start_camera, glm::vec3 point, glm::vec3 normal, int tri_index, glm::vec2 uv, int obj_index,
+	InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object,
+	int num_direct_light, glm::vec3* direct_lights, glm::vec3* direct_lights_color,
+	int num_point_light, glm::vec3* point_lights, glm::vec3* point_lights_color, glm::vec3 ambient) {
+	float kd = instanceData[obj_index].kd;
+	float ks = instanceData[obj_index].ks;//texture2D(materialSampler, vec2(1.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r;
+	float ka = instanceData[obj_index].ka;// texture2D(materialSampler, vec2(16.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r;
+	float alpha = instanceData[obj_index].alpha;// texture2D(materialSampler, vec2(20.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r;
+	
+	glm::vec3 orig_color(255, 255, 255);
+//	int tex = int(0.1 + texture2D(materialSampler, vec2(2.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r);
+//	orig_color = texture2D(renderSampler[tex], uv).rgb;
+	glm::vec3 color = ka * orig_color * ambient;
+	glm::vec3 eye_dir = normalize(start_camera - point);
+	int t1, t2;
+	glm::vec2 v1;
+	glm::vec4 v2, v3;
 	for (int i = 0; i < num_direct_light; ++i) {
-		float intensity = dot(-direct_lights[i], normal) * dot(eye_dir, normal);
+		float intensity = glm::dot(-direct_lights[i], normal) * glm::dot(eye_dir, normal);
 		if (intensity < 0)
 			continue;
-		float depth = tracing(point, -direct_lights[i], 100, t1, t2, v2, v1, v3);
+		float depth = tracing(point, -direct_lights[i], 100, t1, t2, v2, v1, v3, instanceData, vertexBuffer, normalBuffer, texBuffer, num_object);
 		if (depth < 1000)
 			continue;
 		color += intensity * (orig_color * direct_lights_color[i] * kd
-			+ clamp(pow(dot(reflect(direct_lights[i], normal), eye_dir), 20), 0, 1) * ks * direct_lights_color[i]);
+			+ clamp((float)pow(glm::dot(glm::reflect(direct_lights[i], normal), eye_dir), 20), 0.0f, 1.f) * ks * direct_lights_color[i]);
 	}
 	for (int i = 0; i < num_point_light; ++i) {
-		vec3 dis = point - point_lights[i];
-		float len = length(dis);
+		glm::vec3 dis = point - point_lights[i];
+		float len = glm::length(dis);
 		float l = 1 / (len * len);
 		dis = normalize(dis);
-		float intensity = dot(-dis, normal) * dot(eye_dir, normal);
+		float intensity = glm::dot(-dis, normal) * glm::dot(eye_dir, normal);
 		if (intensity < 0)
 			continue;
-		float depth = tracing(point, -dis, len, t1, t2, v2, v1, v3);
+		float depth = tracing(point, -dis, len, t1, t2, v2, v1, v3, instanceData, vertexBuffer, normalBuffer, texBuffer, num_object);
 		if (depth < len)
 			continue;
-		vec3 para = kd * l * point_lights_color[i];
+		glm::vec3 para = kd * l * point_lights_color[i];
 		color = color + intensity * (orig_color * para
-			+ clamp(pow(dot(reflect(dis, normal), eye_dir), alpha), 0, 1) * ks * point_lights_color[i]);
+			+ clamp((float)pow(dot(reflect(dis, normal), eye_dir), alpha), 0.f, 1.f) * ks * point_lights_color[i]);
 	}
-	*/
-	return glm::vec3(0, 0, 0);
+	return color;
 }
 
 
 __global__ void
 render(unsigned int *g_odata, int imgw, int imgh,
 glm::vec3 cam_up, glm::vec3 cam_forward, glm::vec3 right, glm::vec3 cam_pos, float dis_per_pix,
-	InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer,
-	int num_object)
+	InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object,
+	int num_direct_lights, glm::vec3* direct_lights, glm::vec3* direct_lights_color,
+	int num_point_lights, glm::vec3* point_lights, glm::vec3* point_lights_color, glm::vec3 ambient)
 {
 	extern __shared__ uchar4 sdata[];
 
@@ -194,7 +198,7 @@ glm::vec3 cam_up, glm::vec3 cam_forward, glm::vec3 right, glm::vec3 cam_pos, flo
 
 	glm::vec3 ray_p = cam_pos;
 //	uchar4 c4 = make_uchar4((float)x / imgw * 255, (float)y / imgh * 255, 0, 255);
-	glm::vec3 color(255, 182, 0);
+	glm::vec3 color(0, 0, 0);
 	glm::vec2 noises[NUM_SAMPLE];
 	noises[0] = glm::vec2(0, 0);
 	for (int i = 0; i < NUM_SAMPLE; ++i) {
@@ -209,8 +213,12 @@ glm::vec3 cam_up, glm::vec3 cam_forward, glm::vec3 right, glm::vec3 cam_pos, flo
 		float depth = tracing(ray_p, ray_d, -1, tri_index, obj_index, hit_point, uv, normal, 
 			instanceData, vertexBuffer, normalBuffer, texBuffer, num_object);
 		if (depth < 1e20) {
-			color = glm::vec3(uv.x * 255, uv.y * 255, 255);
-//			color += lighting(ray_p, hit_point, normal, tri_index, uv, obj_index, orig_color);
+			glm::vec3 normal3(normal.x, normal.y, normal.z);
+			glm::vec3 hit_point3(hit_point.x, hit_point.y, hit_point.z);
+			color += lighting(ray_p, hit_point3, normal3, tri_index, uv, obj_index, instanceData,
+				vertexBuffer, normalBuffer, texBuffer, num_object,
+				num_direct_lights, direct_lights, direct_lights_color,
+				num_point_lights, point_lights, point_lights_color, ambient);
 		}
 		else {
 			color = glm::vec3(0, 0, 0);
@@ -224,10 +232,18 @@ glm::vec3 cam_up, glm::vec3 cam_forward, glm::vec3 right, glm::vec3 cam_pos, flo
 extern "C" void
 cudaRender(dim3 grid, dim3 block, int sbytes, unsigned int *g_odata, int imgw, int imgh)
 {
+	static float count = 0.5;
+	static float dir = 0.1;
+	count += dir;
+	if (count >= 0.99)
+		dir = -dir;
+	if (count <= 0.01)
+		dir = -dir;
 	float dis_per_pix = tan(World::fov * 0.5 * 3.141592654 / 180.0) / (imgw / 2);
 	glm::vec3 right = glm::cross(World::camera_lookat, World::camera_up);
 	render << < grid, block, sbytes >> >(g_odata, imgw, imgh,
 		World::camera_up, World::camera_lookat, right, World::camera, dis_per_pix,
-		g_world.materialBuffer, g_world.vertexBuffer, g_world.normalBuffer, g_world.texBuffer,
-		g_world.num_objects);
+		g_world.materialBuffer, g_world.vertexBuffer, g_world.normalBuffer, g_world.texBuffer, g_world.num_objects,
+		g_world.lights.direct_light_dir.size(), g_world.directLightsBuffer, g_world.directLightsColorBuffer,
+		g_world.lights.point_light_pos.size(), g_world.pointLightsBuffer, g_world.pointLightsColorBuffer, g_world.lights.ambient * count);
 }
