@@ -37,6 +37,15 @@ __device__ int rgbToInt(float r, float g, float b)
 	return (int(b) << 16) | (int(g) << 8) | int(r);
 }
 
+__device__ glm::vec3 Inttorgb(int x)
+{
+	glm::vec3 rgb;
+	rgb.b = (x >> 16);
+	rgb.g = (x >> 8) & 0xff;
+	rgb.r = (x & 0xff);
+	return rgb;
+}
+
 __device__ __host__
 float rayIntersectsTriangle(glm::vec3 p, glm::vec3 d,
 glm::vec3 v0, glm::vec3 v1, glm::vec3 v2, float& u, float& v) {
@@ -364,6 +373,38 @@ glm::vec3 cam_up, glm::vec3 cam_forward, glm::vec3 right, glm::vec3 cam_pos, flo
 	g_odata[y*imgw + x] = rgbToInt(c4.x, c4.y, c4.z);
 }
 
+__global__ void
+filter(unsigned int *g_odata, int imgw, int imgh) {
+	int tx = threadIdx.x;
+	int ty = threadIdx.y;
+	int bw = blockDim.x;
+	int bh = blockDim.y;
+	int x = blockIdx.x*bw + tx;
+	int y = blockIdx.y*bh + ty;
+	int id = y * imgw + x;
+	if (g_odata[id] == 0) {
+		glm::vec3 rgb(0, 0, 0);
+		int count = 0;
+		for (int dx = -1; dx <= 1; ++dx) {
+			for (int dy = -1; dy <= 1; ++dy) {
+				int nx = x + dx;
+				int ny = y + dy;
+				if (nx >= 0 && nx < imgw && ny >= 0 && ny < imgh) {
+					int nid = ny * imgw + nx;
+					if (g_odata[nid] != 0) {
+						count += 1;
+						rgb += Inttorgb(g_odata[nid]);
+					}
+				}
+			}
+		}
+		if (count == 0)
+			g_odata[id] = rgbToInt(255, 0, 0);
+		else
+			g_odata[id] = rgbToInt(rgb.r / count, rgb.g / count, rgb.b / count);
+	}
+}
+
 extern "C" void
 cudaRender(dim3 grid, dim3 block, int sbytes, unsigned int *g_odata, int imgw, int imgh)
 {
@@ -376,5 +417,5 @@ cudaRender(dim3 grid, dim3 block, int sbytes, unsigned int *g_odata, int imgw, i
 		g_world.lights.direct_light_dir.size(), g_world.directLightsBuffer, g_world.directLightsColorBuffer,
 		g_world.lights.point_light_pos.size(), g_world.pointLightsBuffer, g_world.pointLightsColorBuffer, g_world.lights.ambient * count,
 		g_world.texImagesBuffer, g_world.texOffsetBuffer);
-	
+	filter << < grid, block, sbytes >> >(g_odata, imgw, imgh);
 }
