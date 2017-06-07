@@ -8,6 +8,16 @@
 #include <algorithm>
 using namespace std;
 
+struct BVHData
+{
+	glm::vec3 minCorner, maxCorner;
+	int axis;
+	int start_id;
+	int left_id;
+	int right_id;
+	int parent_id;
+};
+
 class BBox {
 public:
 	BBox() {
@@ -65,28 +75,27 @@ public:
 		if (num - mid_point > 0)
 			right = new BVH(vertices + 9 * mid_point, normals + 9 * mid_point, uv + 6 * mid_point, indices + mid_point, num - mid_point, (dim + 1) % 3, level + 1);
 	}
-	void genBuffer(vector<float>& buffer, int start = 0, int start_ind = 0, int parent_id = -1) {
-		buffer.resize(11);
-		buffer[0] = bbox.min_corner.x;
-		buffer[1] = bbox.min_corner.y;
-		buffer[2] = bbox.min_corner.z;
-		buffer[3] = bbox.max_corner.x;
-		buffer[4] = bbox.max_corner.y;
-		buffer[5] = bbox.max_corner.z;
-		buffer[6] = this->axis;
-		buffer[7] = start_ind;
-		buffer[8] = buffer[9] = -1;
-		vector<float> left_buffer, right_buffer;
+	void genBuffer(vector<BVHData>& buffer, int start = 0, int start_ind = 0, int parent_id = -1) {
+		BVHData bvhData;
+		bvhData.minCorner = bbox.min_corner;
+		bvhData.maxCorner = bbox.max_corner;
+		bvhData.axis = axis;
+		bvhData.start_id = start_ind;
+		bvhData.left_id = -1;
+		bvhData.right_id = -1;
+		vector<BVHData> left_buffer, right_buffer;
 
 		if (left) {
-			buffer[8] = start + 1;
-			left->genBuffer(left_buffer, buffer[8], start_ind, start);
+			bvhData.left_id = start + 1;
+			left->genBuffer(left_buffer, bvhData.left_id, start_ind, start);
 		}
 		if (right) {
-			buffer[9] = start + 1 + left_buffer.size() / 11;
-			right->genBuffer(right_buffer, buffer[9], start_ind + mid_point, start);
+			bvhData.right_id = start + 1 + left_buffer.size();
+			right->genBuffer(right_buffer, bvhData.right_id, start_ind + mid_point, start);
 		}
-		buffer[10] = parent_id;
+		bvhData.parent_id = parent_id;
+		buffer.clear();
+		buffer.push_back(bvhData);
 		buffer.insert(buffer.end(), left_buffer.begin(), left_buffer.end());
 		buffer.insert(buffer.end(), right_buffer.begin(), right_buffer.end());
 	}

@@ -1,6 +1,6 @@
 #include <helper_cuda.h>
 #include "../scene/world.h"
-
+#include "../bvh/bvh.h"
 #define PATH_DEPTH 10
 #define PATH_MAX_DEPTH 3
 #define NUM_SAMPLE 1
@@ -148,6 +148,152 @@ int BoundingBoxIntersect(glm::vec3& ray_o, glm::vec3& ray_t, glm::vec3& minP, gl
 		tmax = min(tmax, tz1);
 	return tmax >= tmin;
 
+}
+
+/* BVH Intersection */
+int bvh_index(BVHData* bvh_node, int offset) {
+	return offset + bvh_node->start_id;
+}
+
+int bvh_left(BVHData* bvh_node, int offset) {
+	return offset + bvh_node->left_id;
+}
+
+int bvh_right(BVHData* bvh_node, int offset) {
+	return offset + bvh_node->right_id;
+}
+
+int bvh_parent(BVHData* bvh_node, int offset) {
+	return offset + bvh_node->parent_id;
+}
+
+bool bvh_dir(BVHData* bvh_node, glm::vec3& ray) {
+	int axis = bvh_node->axis;
+	if (axis == 0)
+		return ray.x > 0;
+	if (axis == 1)
+		return ray.y > 0;
+	return ray.z <= 0;
+}
+
+
+float box_intersect(BVHData* bvh_node, glm::vec3& ray_o, glm::vec3& ray_t) {
+	float step = 1.0 / 11;
+	float tmp = 0;
+	float a1, a2, b1, b2, c1, c2;
+	a1 = (bvh_node->minCorner.x - ray_o.x);
+	a2 = (bvh_node->maxCorner.x - ray_o.x);
+	if (ray_t.x < 1e-6 && ray_t.x > -1e-6) {
+		if (a1 * a2 > 1e-4)
+			return -1;
+		a1 = -1e30; a2 = 1e30;
+	}
+	else {
+		a1 /= ray_t.x;
+		a2 /= ray_t.x;
+	}
+	if (a1 > a2) {
+		tmp = a1; a1 = a2; a2 = tmp;
+	}
+	b1 = (bvh_node->minCorner.y - ray_o.y);
+	b2 = (bvh_node->maxCorner.y - ray_o.y);
+	if (ray_t.y < 1e-6 && ray_t.y > -1e-6) {
+		if (b1 * b2 > 1e-4)
+			return -1;
+		b1 = -1e30; b2 = 1e30;
+	}
+	else {
+		b1 /= ray_t.y;
+		b2 /= ray_t.y;
+	}
+	if (b1 > b2) {
+		tmp = b1; b1 = b2; b2 = tmp;
+	}
+	c1 = (bvh_node->minCorner.z - ray_o.z);
+	c2 = (bvh_node->maxCorner.y - ray_o.z);
+	if (ray_t.z < 1e-6 && ray_t.z > -1e-6) {
+		if (c1 * c2 > 1e-4)
+			return -1;
+		c1 = -1e30; c2 = 1e30;
+	}
+	else {
+		c1 /= ray_t.z;
+		c2 /= ray_t.z;
+	}
+	if (c1 > c2) {
+		tmp = c1; c1 = c2; c2 = tmp;
+	}
+	float t1, t2;
+	t1 = max(a1, max(b1, c1));
+	t2 = min(a2, min(b2, c2));
+
+	if (t2 >= t1 && t2 >= 0)
+		return (t1 > 0) ? t1 : 0;
+	else
+		return -1;
+}
+
+float bvh_intersect(glm::vec3& ray_o, glm::vec3& ray_t, float& index, float& u, float& v, 
+	glm::vec3* vertexBuffer, BVHData* bvh, int offset) {
+	float depth = 1e30;
+	index = -1;
+	BVHData* bvh_node = bvh + offset;
+	BVHData* last_node = 0;
+	float u1, v1;
+	int t = 0;
+	while (bvh_node != 0) {
+		t += 1;
+		if (last_node == 0) {
+			float cur_depth = box_intersect(bvh_node, ray_o, ray_t);
+			if (cur_depth < 0 || cur_depth > depth) {
+				last_node = bvh_node;
+				bvh_node = bvh + bvh_parent(bvh_node, offset);
+				continue;
+			}
+			if (bvh_left(bvh_node, offset) < offset) {
+				int cur_index = bvh_index(bvh_node, offset);
+				cur_depth = rayIntersectsTriangle(ray_o, ray_t, vertexBuffer[cur_index], 
+					vertexBuffer[cur_index + 1], vertexBuffer[cur_index + 2], u1, v1);
+				if (cur_depth >= 0 && cur_depth < depth) {
+					index = cur_index;
+					u = u1;
+					v = v1;
+					depth = cur_depth;
+				}
+				last_node = bvh_node;
+				bvh_node = bvh + bvh_parent(bvh_node, offset);
+				continue;
+			}
+			else {
+				last_node = 0;
+				if (bvh_dir(bvh_node, ray_t)) {
+					bvh_node = bvh + bvh_left(bvh_node, offset);
+				}
+				else {
+					bvh_node = bvh + bvh_right(bvh_node, offset);
+				}
+			}
+		}
+		else {
+			bool dir = bvh_dir(bvh_node, ray_t);
+			BVHData* left_node = bvh + bvh_left(bvh_node, offset);
+			BVHData* right_node = bvh + bvh_right(bvh_node, offset);
+			if (dir && left_node == last_node) {
+				last_node = 0;
+				bvh_node = bvh + bvh_right(bvh_node, offset);
+			}
+			else
+				if (!dir && right_node == last_node) {
+					last_node = 0;
+					bvh_node = bvh + bvh_left(bvh_node, offset);
+				}
+				else {
+					last_node = bvh_node;
+					bvh_node = bvh + bvh_parent(bvh_node, offset);
+				}
+		}
+	}
+	return depth;
 }
 
 /* Tracing Algorithm */

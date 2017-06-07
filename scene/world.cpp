@@ -87,8 +87,8 @@ void World::GenerateGeometries()
 		t_ptr += objects[i]->uv.size() * 2;
 
 		BVH* bvh = new BVH(v_ptr_o, n_ptr_o, t_ptr_o, index_ptr_o, objects[i]->vertex.size() / 3);
-		std::vector<float> bvh_buffer;
-		bvh->genBuffer(bvh_buffer);
+		std::vector<BVHData> bvh_buffer;
+		bvh->genBuffer(bvh_buffer, (v_ptr_o - vertex_buffer.data()) / 3);
 		bvhData.insert(bvhData.end(), bvh_buffer.begin(), bvh_buffer.end());
 		bvh_offset = bvhData.size();
 		delete bvh;
@@ -135,6 +135,6 @@ void World::GenerateGeometries()
 	cudaMalloc(&causticBuffer, sizeof(glm::vec3) * causticMap.size());
 	cudaMalloc(&causticCoordsBuffer, sizeof(glm::vec2) * causticMap.size());
 
-	cudaMalloc(&bvhDataBuffer, sizeof(float) * bvhData.size());
-	cudaMemcpy(bvhDataBuffer, bvhData.data(), sizeof(float) * bvhData.size(), cudaMemcpyHostToDevice);
+	cudaMalloc(&bvhDataBuffer, sizeof(BVHData) * bvhData.size());
+	cudaMemcpy(bvhDataBuffer, bvhData.data(), sizeof(BVHData) * bvhData.size(), cudaMemcpyHostToDevice);
 }

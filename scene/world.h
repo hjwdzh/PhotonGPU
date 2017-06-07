@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 #include "light.h"
 #include "geometry.h"
+#include "../bvh/bvh.h"
 #include "../cuda-opengl.h"
 struct InstanceData
 {
@@ -54,7 +55,7 @@ public:
 	glm::ivec3* causticMapBuffer;
 	glm::vec2* causticCoordsBuffer;
 
-	std::vector<float> bvhData;
+	std::vector<BVHData> bvhData;
 
 	float* bvhDataBuffer;
 };
