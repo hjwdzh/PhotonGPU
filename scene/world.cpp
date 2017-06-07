@@ -93,4 +93,5 @@ void World::GenerateGeometries()
 
 	causticMap.resize(512 * 512);
 	cudaMalloc(&causticMapBuffer, sizeof(glm::ivec3) * causticMap.size());
+	cudaMalloc(&causticBuffer, sizeof(glm::vec3) * causticMap.size());
 }

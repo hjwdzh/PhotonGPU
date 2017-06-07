@@ -3,6 +3,9 @@
 #include "../cuda-opengl.h"
 #define PATH_DEPTH 5
 
+extern glm::vec3 projectCaustic(glm::vec3 ray_o, glm::vec3 ray_t,
+	InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object);
+
 extern float tracing(glm::vec3 ray_o_o, glm::vec3 ray_t_o, float shadow, int& tri, int& obj, glm::vec4& hit_point, glm::vec2& uv, glm::vec4& normal,
 	InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object);
 
@@ -13,13 +16,30 @@ glm::vec3 lighting(glm::vec3 start_camera, glm::vec3 point, glm::vec3 normal, in
 	uchar3* imagesBuffer, glm::ivec3* imageOffsetBuffer, glm::vec3& orig_color, glm::ivec3* causticMap);
 void testCPU()
 {
-	int imgw = 128, imgh = 128;
+	int imgw = 512, imgh = 512;
 	cv::Mat mask = cv::Mat::zeros(imgh, imgw, CV_8UC3);
 	for (int i = 0; i < imgh; ++i) {
 		for (int j = 0; j < imgw; ++j) {
 			printf("%d %d\n", i, j);
-			i = 85;
-			j = 58;
+			glm::vec3 pos(j * 0.05 - 12.8, 0, i * 0.05 - 12.8);
+			glm::vec3 dir = g_world.lights.direct_light_dir[0];
+			glm::vec3 info = projectCaustic(pos - dir * 1000.0f, dir, 
+				g_world.material.data(), (glm::vec3*)g_world.vertex_buffer.data(), (glm::vec3*)g_world.normal_buffer.data(),
+				(glm::vec2*)g_world.tex_buffer.data(), g_world.num_objects);
+	
+			int x = info.x;
+			int y = info.y;
+			if (y >= 0 && y < imgh && x >= 0 && x < imgw) {
+				mask.at<cv::Vec3b>(y, x) = cv::Vec3b(255,255,255);
+			}
+		}
+	}
+	cv::imshow("mask", mask);
+	cv::waitKey();
+	cv::imwrite("mask.png", mask);
+	exit(0);
+	for (int i = 0; i < imgh; ++i) {
+		for (int j = 0; j < imgw; ++j) {
 			float dis_per_pix = tan(World::fov * 0.5 * 3.141592654 / 180.0) / (imgw / 2);
 			glm::vec3 right = glm::cross(World::camera_lookat, World::camera_up);
 			glm::vec3 ray_d = glm::normalize(World::camera_lookat + (j - imgw / 2) * dis_per_pix * right + (imgh / 2 - i) * dis_per_pix * World::camera_up);

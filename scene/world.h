@@ -52,7 +52,7 @@ public:
 
 	uchar3* texImagesBuffer;
 	glm::ivec3* texOffsetBuffer;
-
+	glm::vec3* causticBuffer;
 	glm::ivec3* causticMapBuffer;
 };
 
