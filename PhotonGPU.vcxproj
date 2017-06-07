@@ -26,6 +26,7 @@
     <ClCompile Include="scene\world.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="bvh.h" />
     <ClInclude Include="cuda-opengl.h" />
     <ClInclude Include="loader\objloader.h" />
     <ClInclude Include="scene\geometry.h" />

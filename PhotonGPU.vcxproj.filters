@@ -13,6 +13,9 @@
     <Filter Include="scene">
       <UniqueIdentifier>{83056fbf-7c58-40e1-abcc-fc30558cbb3e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="bvh">
+      <UniqueIdentifier>{d27dee9d-6668-47d6-b020-fffceda476ee}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="app\main.cpp">
@@ -44,6 +47,9 @@
     </ClInclude>
     <ClInclude Include="scene\world.h">
       <Filter>scene</Filter>
+    </ClInclude>
+    <ClInclude Include="bvh.h">
+      <Filter>bvh</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
