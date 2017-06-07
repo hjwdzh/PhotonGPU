@@ -1,16 +1,3 @@
-/*
-* Copyright 1993-2015 NVIDIA Corporation.  All rights reserved.
-*
-* Please refer to the NVIDIA end user license agreement (EULA) associated
-* with this source code for terms and conditions that govern your use of
-* this software. Any use, reproduction, disclosure, or distribution of
-* this software and related documentation outside the terms of the EULA
-* is strictly prohibited.
-*
-*/
-
-// Utilities and system includes
-
 #include <helper_cuda.h>
 #include "../scene/world.h"
 
@@ -20,6 +7,7 @@
 #define CAUSTIC_X_MIN -12.8
 #define CAUSTIC_MAP_DIS 0.05
 
+/* BASIC OPERATIONS */
 __device__ __host__ float clamp(float x, float a, float b)
 {
 	return max(a, min(b, x));
@@ -48,6 +36,42 @@ __device__ glm::vec3 Inttorgb(int x)
 	return rgb;
 }
 
+
+__device__ __host__
+glm::vec3 fetchTex(glm::vec2& uv, int objIndex, uchar3* imagesBuffer, glm::ivec3* imageOffsetBuffer)
+{
+	glm::ivec3& info = imageOffsetBuffer[objIndex];
+	int offset = info.x;
+	int iy = info.y;
+	int ix = info.z;
+	float x = ix * uv.x;
+	float y = iy * uv.y;
+	int lx = x, ly = y;
+	int rx = lx + 1, ry = ly + 1;
+	float wx = x - lx, wy = y - ly;
+	if (lx < 0)
+		lx += wx;
+	if (ly < 0)
+		ly += wy;
+	if (rx >= ix)
+		rx -= ix;
+	if (ry >= iy)
+		ry -= iy;
+	int ind1 = offset + ly * ix + lx;
+	int ind2 = offset + ly * ix + rx;
+	int ind3 = offset + ry * ix + lx;
+	int ind4 = offset + ry * ix + rx;
+	uchar3& c1 = imagesBuffer[ind1];
+	uchar3& c2 = imagesBuffer[ind2];
+	uchar3& c3 = imagesBuffer[ind3];
+	uchar3& c4 = imagesBuffer[ind4];
+	float cx = (c1.x * (1 - wx) + c2.x * wx) * (1 - wy) + (c3.x * (1 - wx) + c4.x * wx) * wy;
+	float cy = (c1.y * (1 - wx) + c2.y * wx) * (1 - wy) + (c3.y * (1 - wx) + c4.y * wx) * wy;
+	float cz = (c1.z * (1 - wx) + c2.z * wx) * (1 - wy) + (c3.z * (1 - wx) + c4.z * wx) * wy;
+	return glm::vec3(cz, cy, cx);
+}
+
+/* Intersections */
 __device__ __host__
 float rayIntersectsTriangle(glm::vec3& p, glm::vec3& d,
 glm::vec3& v0, glm::vec3& v1, glm::vec3& v2, float& u, float& v) {
@@ -126,6 +150,7 @@ int BoundingBoxIntersect(glm::vec3& ray_o, glm::vec3& ray_t, glm::vec3& minP, gl
 
 }
 
+/* Tracing Algorithm */
 __device__ __host__
 float tracing(glm::vec3& ray_o, glm::vec3& ray_t, float shadow, int& tri, int& obj, glm::vec3& hit_point, glm::vec2& uv, glm::vec3& normal,
 InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object) {
@@ -172,96 +197,6 @@ InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, gl
 	normal = normalize(normal);
 	return depth;
 }
-
-__device__ __host__
-glm::vec3 fetchTex(glm::vec2& uv, int objIndex, uchar3* imagesBuffer, glm::ivec3* imageOffsetBuffer)
-{
-	glm::ivec3& info = imageOffsetBuffer[objIndex];
-	int offset = info.x;
-	int iy = info.y;
-	int ix = info.z;
-	float x = ix * uv.x;
-	float y = iy * uv.y;
-	int lx = x, ly = y;
-	int rx = lx + 1, ry = ly + 1;
-	float wx = x - lx, wy = y - ly;
-	if (lx < 0)
-		lx += wx;
-	if (ly < 0)
-		ly += wy;
-	if (rx >= ix)
-		rx -= ix;
-	if (ry >= iy)
-		ry -= iy;
-	int ind1 = offset + ly * ix + lx;
-	int ind2 = offset + ly * ix + rx;
-	int ind3 = offset + ry * ix + lx;
-	int ind4 = offset + ry * ix + rx;
-	uchar3& c1 = imagesBuffer[ind1];
-	uchar3& c2 = imagesBuffer[ind2];
-	uchar3& c3 = imagesBuffer[ind3];
-	uchar3& c4 = imagesBuffer[ind4];
-	float cx = (c1.x * (1 - wx) + c2.x * wx) * (1 - wy) + (c3.x * (1 - wx) + c4.x * wx) * wy;
-	float cy = (c1.y * (1 - wx) + c2.y * wx) * (1 - wy) + (c3.y * (1 - wx) + c4.y * wx) * wy;
-	float cz = (c1.z * (1 - wx) + c2.z * wx) * (1 - wy) + (c3.z * (1 - wx) + c4.z * wx) * wy;
-	return glm::vec3(cz, cy, cx);
-}
-
-__device__ __host__
-void projectCaustic(glm::vec3& ray_o, glm::vec3& ray_t, glm::vec3 &color,
-InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object,
-glm::vec3& light, glm::vec2& coords, uchar3* texImages, glm::ivec3* imageOffsets) {
-	int tri_index, obj_index;
-	glm::vec3 hit_point, normal;
-	glm::vec2 uv;
-	float depth = tracing(ray_o, ray_t, -1, tri_index, obj_index, hit_point, uv, normal, instanceData, vertexBuffer, normalBuffer, texBuffer, num_object);
-	glm::vec3 orig_color = fetchTex(uv, obj_index, texImages, imageOffsets) / 255.0f;
-	int steps = 0;
-	float intensity = 1;
-	while (depth < 1e20 && (instanceData[obj_index].kr != 0 || instanceData[obj_index].kf != 0)) {
-		if (instanceData[obj_index].kf != 0) {
-			float nr = instanceData[obj_index].nr;
-			float cost = glm::dot(normal, ray_t);
-			if (cost < 0) {
-				nr = 1 / nr;
-				cost = -cost;
-			}
-			else {
-				normal = -normal;
-			}
-			float rootContent = 1 - nr * nr * (1 - cost * cost);
-			if (rootContent >= 0) {
-				ray_o = glm::vec3(hit_point.x, hit_point.y, hit_point.z);
-				ray_t = (nr * cost - sqrt(rootContent)) * normal + nr * ray_t;
-				intensity *= instanceData[obj_index].kf;
-			}
-			else {
-				ray_o = glm::vec3(hit_point.x, hit_point.y, hit_point.z);
-				ray_t = glm::reflect(ray_t, glm::vec3(normal.x, normal.y, normal.z));
-			}
-		}
-		else if (instanceData[obj_index].kr != 0) {
-			ray_o = glm::vec3(hit_point.x, hit_point.y, hit_point.z);
-			ray_t = glm::reflect(ray_t, glm::vec3(normal.x, normal.y, normal.z));
-			intensity *= instanceData[obj_index].kr;
-		}
-		steps++;
-		if (steps > 2)
-			break;
-		depth = tracing(ray_o, ray_t, -1, tri_index, obj_index, hit_point, uv, normal, instanceData, vertexBuffer, normalBuffer, texBuffer, num_object);
-	}
-	if (obj_index == 0 && steps > 0) {
-		float x = (hit_point.x - CAUSTIC_X_MIN) / CAUSTIC_MAP_DIS;
-		float y = (hit_point.z - CAUSTIC_X_MIN) / CAUSTIC_MAP_DIS;
-		coords = glm::vec2(x, y);
-		light = intensity * color * orig_color;
-	}
-	else {
-		coords = glm::vec2(-1, -1);
-		light = glm::vec3(0, 0, 0);
-	}
-}
-
 
 __device__ __host__
 glm::vec3 lighting(glm::vec3& start_camera, glm::vec3& point, glm::vec3& normal, int tri_index, glm::vec2& uv, int obj_index,
@@ -483,6 +418,7 @@ glm::vec3* causticMap)
 	g_odata[y*imgw + x] = rgbToInt(c4.x, c4.y, c4.z);
 }
 
+/* Filtering */
 __global__ void
 filter(unsigned int *g_odata, int imgw, int imgh) {
 	int tx = threadIdx.x;
@@ -515,6 +451,104 @@ filter(unsigned int *g_odata, int imgw, int imgh) {
 	}
 }
 
+
+__global__ void
+FilterCaustic(glm::ivec3* causticMap, glm::vec3* causticBuffer, int imgw, int imgh) {
+	int tx = threadIdx.x;
+	int ty = threadIdx.y;
+	int bw = blockDim.x;
+	int bh = blockDim.y;
+	int x = blockIdx.x*bw + tx;
+	int y = blockIdx.y*bh + ty;
+	int id = y * imgw + x;
+	auto& pix = causticMap[id];
+	int temp[3][3] =
+	{
+		{ 1, 2, 1 },
+		{ 2, 4, 2 },
+		{ 1, 2, 1 }
+	};
+	if (pix.x == 0 && pix.y == 0 && pix.z == 0 || true) {
+		glm::ivec4 pt;
+		for (int py = y - 1; py <= y + 1; ++py) {
+			if (py < 0 || py >= imgh)
+				continue;
+			for (int px = x - 1; px <= x + 1; ++px) {
+				if (px < 0 || px >= imgw)
+					continue;
+				int dy = py - y + 1;
+				int dx = px - x + 1;
+				auto& p = causticMap[py * imgw + px];
+				if (p.x != 0 || p.y != 0 || p.z != 0) {
+					pt += glm::ivec4(p, 1) * temp[dy][dx];
+				}
+			}
+		}
+		if (pt.w > 0)
+			causticBuffer[id] = glm::vec3((float)pt.x / pt.w, (float)pt.y / pt.w, (float)pt.z / pt.w);
+		else
+			causticBuffer[id] = glm::vec3(0, 0, 0);
+	}
+	else {
+		causticBuffer[id] = glm::vec3(pix.x, pix.y, pix.z);
+	}
+}
+
+/* Caustic Rendering */
+__device__ __host__
+void projectCaustic(glm::vec3& ray_o, glm::vec3& ray_t, glm::vec3 &color,
+InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object,
+glm::vec3& light, glm::vec2& coords, uchar3* texImages, glm::ivec3* imageOffsets) {
+	int tri_index, obj_index;
+	glm::vec3 hit_point, normal;
+	glm::vec2 uv;
+	float depth = tracing(ray_o, ray_t, -1, tri_index, obj_index, hit_point, uv, normal, instanceData, vertexBuffer, normalBuffer, texBuffer, num_object);
+	glm::vec3 orig_color = fetchTex(uv, obj_index, texImages, imageOffsets) / 255.0f;
+	int steps = 0;
+	float intensity = 1;
+	while (depth < 1e20 && (instanceData[obj_index].kr != 0 || instanceData[obj_index].kf != 0)) {
+		if (instanceData[obj_index].kf != 0) {
+			float nr = instanceData[obj_index].nr;
+			float cost = glm::dot(normal, ray_t);
+			if (cost < 0) {
+				nr = 1 / nr;
+				cost = -cost;
+			}
+			else {
+				normal = -normal;
+			}
+			float rootContent = 1 - nr * nr * (1 - cost * cost);
+			if (rootContent >= 0) {
+				ray_o = glm::vec3(hit_point.x, hit_point.y, hit_point.z);
+				ray_t = (nr * cost - sqrt(rootContent)) * normal + nr * ray_t;
+				intensity *= instanceData[obj_index].kf;
+			}
+			else {
+				ray_o = glm::vec3(hit_point.x, hit_point.y, hit_point.z);
+				ray_t = glm::reflect(ray_t, glm::vec3(normal.x, normal.y, normal.z));
+			}
+		}
+		else if (instanceData[obj_index].kr != 0) {
+			ray_o = glm::vec3(hit_point.x, hit_point.y, hit_point.z);
+			ray_t = glm::reflect(ray_t, glm::vec3(normal.x, normal.y, normal.z));
+			intensity *= instanceData[obj_index].kr;
+		}
+		steps++;
+		if (steps > 2)
+			break;
+		depth = tracing(ray_o, ray_t, -1, tri_index, obj_index, hit_point, uv, normal, instanceData, vertexBuffer, normalBuffer, texBuffer, num_object);
+	}
+	if (obj_index == 0 && steps > 0) {
+		float x = (hit_point.x - CAUSTIC_X_MIN) / CAUSTIC_MAP_DIS;
+		float y = (hit_point.z - CAUSTIC_X_MIN) / CAUSTIC_MAP_DIS;
+		coords = glm::vec2(x, y);
+		light = intensity * color * orig_color;
+	}
+	else {
+		coords = glm::vec2(-1, -1);
+		light = glm::vec3(0, 0, 0);
+	}
+}
 
 __global__ void
 ClearCausticMap(glm::ivec3 *g_odata, int imgw, int imgh) {
@@ -641,47 +675,7 @@ SplatCaustic(glm::vec3* caustics, glm::vec2* causticCoords, glm::ivec3* causticM
 	}
 }
 
-__global__ void
-FilterCaustic(glm::ivec3* causticMap, glm::vec3* causticBuffer, int imgw, int imgh) {
-	int tx = threadIdx.x;
-	int ty = threadIdx.y;
-	int bw = blockDim.x;
-	int bh = blockDim.y;
-	int x = blockIdx.x*bw + tx;
-	int y = blockIdx.y*bh + ty;
-	int id = y * imgw + x;
-	auto& pix = causticMap[id];
-	int temp[3][3] =
-	{
-		{ 1, 2, 1 },
-		{ 2, 4, 2 },
-		{ 1, 2, 1 }
-	};
-	if (pix.x == 0 && pix.y == 0 && pix.z == 0 || true) {
-		glm::ivec4 pt;
-		for (int py = y - 1; py <= y + 1; ++py) {
-			if (py < 0 || py >= imgh)
-				continue;
-			for (int px = x - 1; px <= x + 1; ++px) {
-				if (px < 0 || px >= imgw)
-					continue;
-				int dy = py - y + 1;
-				int dx = px - x + 1;
-				auto& p = causticMap[py * imgw + px];
-				if (p.x != 0 || p.y != 0 || p.z != 0) {
-					pt += glm::ivec4(p, 1) * temp[dy][dx];
-				}
-			}
-		}
-		if (pt.w > 0)
-			causticBuffer[id] = glm::vec3((float)pt.x / pt.w, (float)pt.y / pt.w, (float)pt.z / pt.w);
-		else
-			causticBuffer[id] = glm::vec3(0, 0, 0);
-	}
-	else {
-		causticBuffer[id] = glm::vec3(pix.x, pix.y, pix.z);
-	}
-}
+/* GPU Render Entry */
 
 extern "C" void
 cudaRender(dim3 grid, dim3 block, int sbytes, unsigned int *g_odata, int imgw, int imgh)
