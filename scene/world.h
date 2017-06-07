@@ -7,7 +7,7 @@
 struct InstanceData
 {
 	float kd, ks;
-	int s;
+	int s, bvh_offset;
 	float ka, kr, kf, nr, alpha;
 	glm::vec3 minPos, maxPos;
 };
@@ -53,6 +53,10 @@ public:
 	glm::vec3* causticBuffer;
 	glm::ivec3* causticMapBuffer;
 	glm::vec2* causticCoordsBuffer;
+
+	std::vector<float> bvhData;
+
+	float* bvhDataBuffer;
 };
 
 extern World g_world;

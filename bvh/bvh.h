@@ -46,7 +46,7 @@ public:
 		bbox = BBox(vertices);
 		left = 0; right = 0;
 	}
-	BVH(float* vertices, float* normals, float* uv, float* indices, int num, int dim = 0, int level = 0) {
+	BVH(float* vertices, float* normals, float* uv, int* indices, int num, int dim = 0, int level = 0) {
 		this->axis = dim;
 		if (num == 1) {
 			bbox = BBox(vertices);
@@ -90,7 +90,7 @@ public:
 		buffer.insert(buffer.end(), left_buffer.begin(), left_buffer.end());
 		buffer.insert(buffer.end(), right_buffer.begin(), right_buffer.end());
 	}
-	int qsplit(float* vertices, float* normals, float* uv, float* indices, int size, float pivot_val, int axis) {
+	int qsplit(float* vertices, float* normals, float* uv, int* indices, int size, float pivot_val, int axis) {
 		int i = 0, j = size - 1;
 		float centroid;
 		float temp[9];

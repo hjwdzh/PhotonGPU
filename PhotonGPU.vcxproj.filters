@@ -48,7 +48,7 @@
     <ClInclude Include="scene\world.h">
       <Filter>scene</Filter>
     </ClInclude>
-    <ClInclude Include="bvh.h">
+    <ClInclude Include="bvh\bvh.h">
       <Filter>bvh</Filter>
     </ClInclude>
   </ItemGroup>

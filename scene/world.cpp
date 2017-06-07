@@ -1,5 +1,6 @@
 #include "world.h"
 #include "../cuda-opengl.h"
+#include "../bvh/bvh.h"
 glm::vec3 World::camera_up;
 glm::vec3 World::camera_lookat;
 glm::vec3 World::camera;
@@ -21,6 +22,7 @@ void World::GenerateGeometries()
 	float* v_ptr = vertex_buffer.data(), *n_ptr = normal_buffer.data(), *t_ptr = tex_buffer.data();
 	InstanceData* m_ptr = material.data();
 	int s = 0;
+	int bvh_offset = 0;
 	for (int i = 0; i < num_objects; ++i) {
 		m_ptr->kd = objects[i]->kd;
 		m_ptr->ks = objects[i]->ks;
@@ -37,16 +39,18 @@ void World::GenerateGeometries()
 		scale[0] = objects[i]->s.x;
 		scale[1] = objects[i]->s.y;
 		scale[2] = objects[i]->s.z;
+		int* index_ptr_o = index_buffer.data() + s / 3;
 		for (int j = s / 3; j < s / 3 + objects[i]->vertex.size() / 3; ++j)
 			index_buffer[j] = i;
 		s += objects[i]->vertex.size();
+		int* index_ptr = index_buffer.data() + s / 3;
 		m_ptr->s = s;
 		m_ptr->ka = objects[i]->ka;
 		m_ptr->kr = objects[i]->kr;
 		m_ptr->kf = objects[i]->kf;
 		m_ptr->nr = objects[i]->nr;
 		m_ptr->alpha = objects[i]->alpha;
-
+		m_ptr->bvh_offset = bvh_offset;
 		auto axisZ = glm::cross(axisX, axisY);
 		glm::mat4 rotate = glm::mat4(glm::vec4(axisX, 0), glm::vec4(axisY, 0), glm::vec4(axisZ, 0), glm::vec4(0, 0, 0, 1));
 		glm::mat4 convert = glm::mat4(glm::vec4(1, 0, 0, 0), glm::vec4(0, 1, 0, 0), glm::vec4(0, 0, 1, 0), glm::vec4(x, 1))
@@ -72,6 +76,8 @@ void World::GenerateGeometries()
 			n4 = convert * n4;
 			n = glm::normalize(glm::vec3(n4.x, n4.y, n4.z));
 		}
+
+		float* v_ptr_o = v_ptr, *n_ptr_o = n_ptr, *t_ptr_o = t_ptr;
 		memcpy(v_ptr, objects[i]->vertex.data(), objects[i]->vertex.size() * 3 * sizeof(float));
 		v_ptr += objects[i]->vertex.size() * 3;
 		memcpy(n_ptr, objects[i]->normal.data(), objects[i]->normal.size() * 3 * sizeof(float));
@@ -80,6 +86,12 @@ void World::GenerateGeometries()
 		memcpy(t_ptr, objects[i]->uv.data(), objects[i]->uv.size() * 2 * sizeof(float));
 		t_ptr += objects[i]->uv.size() * 2;
 
+		BVH* bvh = new BVH(v_ptr_o, n_ptr_o, t_ptr_o, index_ptr_o, objects[i]->vertex.size() / 3);
+		std::vector<float> bvh_buffer;
+		bvh->genBuffer(bvh_buffer);
+		bvhData.insert(bvhData.end(), bvh_buffer.begin(), bvh_buffer.end());
+		bvh_offset = bvhData.size();
+		delete bvh;
 	}
 
 	tex_offsets.resize(objects.size());
@@ -122,4 +134,7 @@ void World::GenerateGeometries()
 	cudaMalloc(&causticMapBuffer, sizeof(glm::ivec3) * causticMap.size());
 	cudaMalloc(&causticBuffer, sizeof(glm::vec3) * causticMap.size());
 	cudaMalloc(&causticCoordsBuffer, sizeof(glm::vec2) * causticMap.size());
+
+	cudaMalloc(&bvhDataBuffer, sizeof(float) * bvhData.size());
+	cudaMemcpy(bvhDataBuffer, bvhData.data(), sizeof(float) * bvhData.size(), cudaMemcpyHostToDevice);
 }
