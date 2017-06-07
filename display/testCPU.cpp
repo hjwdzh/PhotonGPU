@@ -14,7 +14,7 @@ glm::vec3 lighting(glm::vec3 start_camera, glm::vec3 point, glm::vec3 normal, in
 	InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object,
 	int num_direct_light, glm::vec3* direct_lights, glm::vec3* direct_lights_color,
 	int num_point_light, glm::vec3* point_lights, glm::vec3* point_lights_color, glm::vec3 ambient,
-	uchar3* imagesBuffer, glm::ivec3* imageOffsetBuffer, glm::vec3& orig_color, glm::ivec3* causticMap);
+	uchar3* imagesBuffer, glm::ivec3* imageOffsetBuffer, glm::vec3& orig_color, glm::vec3* causticMap);
 void testCPU()
 {
 	int imgw = 512, imgh = 512;

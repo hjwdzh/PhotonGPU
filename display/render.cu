@@ -218,7 +218,7 @@ glm::vec3 lighting(glm::vec3 start_camera, glm::vec3 point, glm::vec3 normal, in
 	InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object,
 	int num_direct_light, glm::vec3* direct_lights, glm::vec3* direct_lights_color,
 	int num_point_light, glm::vec3* point_lights, glm::vec3* point_lights_color, glm::vec3 ambient,
-	uchar3* imagesBuffer, glm::ivec3* imageOffsetBuffer, glm::vec3& orig_color, glm::ivec3* causticMap) {
+	uchar3* imagesBuffer, glm::ivec3* imageOffsetBuffer, glm::vec3& orig_color, glm::vec3* causticMap) {
 	float kd = instanceData[obj_index].kd;
 	float ks = instanceData[obj_index].ks;//texture2D(materialSampler, vec2(1.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r;
 	float ka = instanceData[obj_index].ka;// texture2D(materialSampler, vec2(16.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r;
@@ -280,7 +280,7 @@ glm::vec3 cam_up, glm::vec3 cam_forward, glm::vec3 right, glm::vec3 cam_pos, flo
 	int num_direct_lights, glm::vec3* direct_lights, glm::vec3* direct_lights_color,
 	int num_point_lights, glm::vec3* point_lights, glm::vec3* point_lights_color, glm::vec3 ambient,
 	uchar3* imagesBuffer, glm::ivec3* imageOffsetBuffer,
-	glm::ivec3* causticMap)
+	glm::vec3* causticMap)
 {
 	extern __shared__ uchar4 sdata[];
 
@@ -592,6 +592,48 @@ SplatCaustic(glm::vec3* caustics, glm::vec2* causticCoords, glm::ivec3* causticM
 	}
 }
 
+__global__ void
+FilterCaustic(glm::ivec3* causticMap, glm::vec3* causticBuffer, int imgw, int imgh) {
+	int tx = threadIdx.x;
+	int ty = threadIdx.y;
+	int bw = blockDim.x;
+	int bh = blockDim.y;
+	int x = blockIdx.x*bw + tx;
+	int y = blockIdx.y*bh + ty;
+	int id = y * imgw + x;
+	auto& pix = causticMap[id];
+	int temp[3][3] =
+	{
+		{ 1, 2, 1 },
+		{ 2, 4, 2 },
+		{ 1, 2, 1 }
+	};
+	if (pix.x == 0 && pix.y == 0 && pix.z == 0 || true) {
+		glm::ivec4 pt;
+		for (int py = y - 1; py <= y + 1; ++py) {
+			if (py < 0 || py >= imgh)
+				continue;
+			for (int px = x - 1; px <= x + 1; ++px) {
+				if (px < 0 || px >= imgw)
+					continue;
+				int dy = py - y + 1;
+				int dx = px - x + 1;
+				auto& p = causticMap[py * imgw + px];
+				if (p.x != 0 || p.y != 0 || p.z != 0) {
+					pt += glm::ivec4(p, 1) * temp[dy][dx];
+				}
+			}
+		}
+		if (pt.w > 0)
+			causticBuffer[id] = glm::vec3((float)pt.x / pt.w, (float)pt.y / pt.w, (float)pt.z / pt.w);
+		else
+			causticBuffer[id] = glm::vec3(0, 0, 0);
+	}
+	else {
+		causticBuffer[id] = glm::vec3(pix.x, pix.y, pix.z);
+	}
+}
+
 extern "C" void
 cudaRender(dim3 grid, dim3 block, int sbytes, unsigned int *g_odata, int imgw, int imgh)
 {
@@ -604,15 +646,17 @@ cudaRender(dim3 grid, dim3 block, int sbytes, unsigned int *g_odata, int imgw, i
 			g_world.materialBuffer, g_world.vertexBuffer, g_world.normalBuffer, g_world.texBuffer, g_world.num_objects,
 			g_world.lights.direct_light_dir[i], g_world.lights.direct_light_color[i], g_world.texImagesBuffer, g_world.texOffsetBuffer);
 		SplatCaustic << < grid, block, sbytes >> > (g_world.causticBuffer, g_world.causticCoordsBuffer, g_world.causticMapBuffer, imgw, imgh);
+		FilterCaustic << < grid, block, sbytes >> > (g_world.causticMapBuffer, g_world.causticBuffer, imgw, imgh);
 	}
+	
 	render << < grid, block, sbytes >> >(g_odata, imgw, imgh,
 		World::camera_up, World::camera_lookat, right, World::camera, dis_per_pix,
 		g_world.materialBuffer, g_world.vertexBuffer, g_world.normalBuffer, g_world.texBuffer, g_world.num_objects,
 		g_world.lights.direct_light_dir.size(), g_world.directLightsBuffer, g_world.directLightsColorBuffer,
 		g_world.lights.point_light_pos.size(), g_world.pointLightsBuffer, g_world.pointLightsColorBuffer, g_world.lights.ambient * count,
 		g_world.texImagesBuffer, g_world.texOffsetBuffer,
-		g_world.causticMapBuffer);
-	filter << < grid, block, sbytes >> >(g_odata, imgw, imgh);
+		g_world.causticBuffer);
+//	filter << < grid, block, sbytes >> >(g_odata, imgw, imgh);
 /*	combineCaustic << < grid, block, sbytes >> >(g_odata, g_world.causticMapBuffer, imgw, imgh,
 		World::camera_up, World::camera_lookat, right, World::camera, dis_per_pix,
 		g_world.materialBuffer, g_world.vertexBuffer, g_world.normalBuffer, g_world.texBuffer, g_world.num_objects);*/

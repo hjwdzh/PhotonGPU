@@ -1,5 +1,5 @@
 camera
-	-pos 0 3 -8
+	-pos 0 8 -12
 	-up 0 1 0
 	-lookat 0 0 1
 	-fov 120
@@ -87,7 +87,6 @@ dragon.obj
 	-ka 0.5
 	-kd 0
 	-kf 0.8
-	-kd 0.0
 	-nr 1.5
 	-ks 0
 	-scale 5 5 5

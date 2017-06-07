@@ -37,7 +37,7 @@ public:
 
 	std::vector<InstanceData> material;
 
-	std::vector<glm::ivec3> causticMap;
+	std::vector<glm::vec3> causticMap;
 
 	glm::vec3 *vertexBuffer;
 	glm::vec3 *normalBuffer;
