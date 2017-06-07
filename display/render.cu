@@ -92,8 +92,28 @@ void swaps(float& x, float& y) {
 }
 
 __device__ __host__
-int BoundingBoxIntersect(glm::vec3& ray_o, glm::vec3& ray_t, glm::vec3& min, glm::vec3& max) {
-	return 1;
+int BoundingBoxIntersect(glm::vec3& ray_o, glm::vec3& ray_t, glm::vec3& minP, glm::vec3& maxP) {
+	auto r = ray_t + glm::vec3(1e-6, 1e-6, 1e-6);
+	auto rinv = glm::vec3(1 / r.x, 1 / r.y, 1 / r.z);
+	double tx1 = (minP.x - ray_o.x)*rinv.x;
+	double tx2 = (maxP.x - ray_o.x)*rinv.x;
+
+	double tmin = min(tx1, tx2);
+	double tmax = max(tx1, tx2);
+
+	double ty1 = (minP.y - ray_o.y)*rinv.y;
+	double ty2 = (maxP.y - ray_o.y)*rinv.y;
+
+	tmin = max(tmin, min(ty1, ty2));
+	tmax = min(tmax, max(ty1, ty2));
+	double tz1 = (minP.z - ray_o.z)*rinv.z;
+	double tz2 = (maxP.z - ray_o.z)*rinv.z;
+
+	tmin = max(tmin, min(tz1, tz2));
+	tmax = min(tmax, max(tz1, tz2));
+
+	return tmax >= tmin;
+
 }
 
 __device__ __host__
