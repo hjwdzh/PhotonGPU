@@ -1,5 +1,5 @@
 camera
-	-pos 0 8 -12
+	-pos 0 3 -8
 	-up 0 1 0
 	-lookat 0 0 1
 	-fov 120
@@ -9,7 +9,7 @@ ambient
 
 direct_light
 	-dir 0.5774 -0.5774 -0.5774
-	-color 0.8 0.6 0.2
+	-color 0.5 0.5 0.5
 
 direct_light
 	-dir -0.5774 -0.5774 -0.5774

@@ -260,10 +260,7 @@ glm::vec3 lighting(glm::vec3 start_camera, glm::vec3 point, glm::vec3 normal, in
 			continue;
 		float depth = tracing(point, -direct_lights[i], 100, t1, t2, v2, v1, v3, instanceData, vertexBuffer, normalBuffer, texBuffer, num_object);
 		if (depth < 1000) {
-/*			if (obj_index == 0)
-				renderCaustic(causticMap, point - 1000.0f * direct_lights[i], direct_lights[i], direct_lights_color[i] / glm::dot(normal, eye_dir),
-					instanceData, vertexBuffer, normalBuffer, texBuffer, num_object);
-*/			continue;
+			continue;
 		}
 		color += intensity * (orig_color * direct_lights_color[i] * kd
 			+ clamp((float)pow(glm::dot(glm::reflect(direct_lights[i], normal), eye_dir), alpha), 0.0f, 1.f) * ks * direct_lights_color[i]);
@@ -282,6 +279,17 @@ glm::vec3 lighting(glm::vec3 start_camera, glm::vec3 point, glm::vec3 normal, in
 		glm::vec3 para = kd * l * point_lights_color[i];
 		color = color + intensity * (orig_color * para
 			+ clamp((float)pow(dot(reflect(dis, normal), eye_dir), alpha), 0.f, 1.f) * ks * point_lights_color[i]);
+	}
+	if (obj_index == 0) {
+		int rx = (point.x - CAUSTIC_X_MIN) / CAUSTIC_MAP_DIS;
+		int ry = (point.z - CAUSTIC_X_MIN) / CAUSTIC_MAP_DIS;
+		if (rx < 512 && ry < 512 && rx >= 0 && ry >= 0) {
+			glm::vec3 caustic = causticMap[ry * 512 + rx];
+			color = color + glm::dot(eye_dir, normal) * kd * caustic;
+			color.x = clamp(color.x, 0.0f, 255.f);
+			color.y = clamp(color.y, 0.0f, 255.f);
+			color.z = clamp(color.z, 0.0f, 255.f);
+		}
 	}
 	return color;
 }
@@ -631,7 +639,7 @@ cudaRender(dim3 grid, dim3 block, int sbytes, unsigned int *g_odata, int imgw, i
 		g_world.texImagesBuffer, g_world.texOffsetBuffer,
 		g_world.causticMapBuffer);
 	filter << < grid, block, sbytes >> >(g_odata, imgw, imgh);
-	combineCaustic << < grid, block, sbytes >> >(g_odata, g_world.causticMapBuffer, imgw, imgh,
+/*	combineCaustic << < grid, block, sbytes >> >(g_odata, g_world.causticMapBuffer, imgw, imgh,
 		World::camera_up, World::camera_lookat, right, World::camera, dis_per_pix,
-		g_world.materialBuffer, g_world.vertexBuffer, g_world.normalBuffer, g_world.texBuffer, g_world.num_objects);
+		g_world.materialBuffer, g_world.vertexBuffer, g_world.normalBuffer, g_world.texBuffer, g_world.num_objects);*/
 }
