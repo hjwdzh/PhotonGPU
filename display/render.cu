@@ -195,6 +195,11 @@ void projectCaustic(glm::vec3 ray_o, glm::vec3 ray_t, glm::vec3 color,
 				ray_t = glm::reflect(ray_t, glm::vec3(normal.x, normal.y, normal.z));
 			}
 		}
+		else if (instanceData[obj_index].kr != 0) {
+			ray_o = glm::vec3(hit_point.x, hit_point.y, hit_point.z);
+			ray_t = glm::reflect(ray_t, glm::vec3(normal.x, normal.y, normal.z));
+			intensity *= instanceData[obj_index].kr;
+		}
 		steps++;
 		if (steps > 2)
 			break;
