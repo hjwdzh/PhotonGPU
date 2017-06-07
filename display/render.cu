@@ -49,8 +49,8 @@ __device__ glm::vec3 Inttorgb(int x)
 }
 
 __device__ __host__
-float rayIntersectsTriangle(glm::vec3 p, glm::vec3 d,
-glm::vec3 v0, glm::vec3 v1, glm::vec3 v2, float& u, float& v) {
+float rayIntersectsTriangle(glm::vec3& p, glm::vec3& d,
+glm::vec3& v0, glm::vec3& v1, glm::vec3& v2, float& u, float& v) {
 
 	glm::vec3 e1 = v1 - v0;
 	glm::vec3 e2 = v2 - v0;
@@ -64,7 +64,7 @@ glm::vec3 v0, glm::vec3 v1, glm::vec3 v2, float& u, float& v) {
 	glm::vec3 s = p - v0;
 	u = f * glm::dot(s, h);
 
-	if (u < -1e-3 || u > 1+1e-3)
+	if (u < -1e-3 || u > 1 + 1e-3)
 		return -1;
 
 	glm::vec3 q = glm::cross(s, e1);
@@ -86,14 +86,29 @@ glm::vec3 v0, glm::vec3 v1, glm::vec3 v2, float& u, float& v) {
 }
 
 __device__ __host__
-float tracing(glm::vec3 ray_o, glm::vec3 ray_t, float shadow, int& tri, int& obj, glm::vec3& hit_point, glm::vec2& uv, glm::vec3& normal,
-	InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object) {
+void swaps(float& x, float& y) {
+	float t = x;
+	x = y, y = t;
+}
+
+__device__ __host__
+int BoundingBoxIntersect(glm::vec3& ray_o, glm::vec3& ray_t, glm::vec3& min, glm::vec3& max) {
+	return 1;
+}
+
+__device__ __host__
+float tracing(glm::vec3& ray_o, glm::vec3& ray_t, float shadow, int& tri, int& obj, glm::vec3& hit_point, glm::vec2& uv, glm::vec3& normal,
+InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object) {
 	float depth = 1e30;
 	obj = -1;
 	tri = -1;
 	int j = 0;
 	for (int k = 0; k < num_object; ++k) {
 		int next_object = instanceData[k].s;
+		if (!BoundingBoxIntersect(ray_o, ray_t, instanceData[k].minPos, instanceData[k].maxPos)) {
+			j = next_object;
+			continue;
+		}
 		while (j < next_object) {
 			glm::vec3& v1 = vertexBuffer[j];
 			glm::vec3& v2 = vertexBuffer[j + 1];
@@ -129,7 +144,7 @@ float tracing(glm::vec3 ray_o, glm::vec3 ray_t, float shadow, int& tri, int& obj
 }
 
 __device__ __host__
-glm::vec3 fetchTex(glm::vec2 uv, int objIndex, uchar3* imagesBuffer, glm::ivec3* imageOffsetBuffer)
+glm::vec3 fetchTex(glm::vec2& uv, int objIndex, uchar3* imagesBuffer, glm::ivec3* imageOffsetBuffer)
 {
 	glm::ivec3& info = imageOffsetBuffer[objIndex];
 	int offset = info.x;
@@ -163,9 +178,9 @@ glm::vec3 fetchTex(glm::vec2 uv, int objIndex, uchar3* imagesBuffer, glm::ivec3*
 }
 
 __device__ __host__
-void projectCaustic(glm::vec3 ray_o, glm::vec3 ray_t, glm::vec3 color,
-	InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object,
-	glm::vec3& light, glm::vec2& coords, uchar3* texImages, glm::ivec3* imageOffsets) {
+void projectCaustic(glm::vec3& ray_o, glm::vec3& ray_t, glm::vec3 &color,
+InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object,
+glm::vec3& light, glm::vec2& coords, uchar3* texImages, glm::ivec3* imageOffsets) {
 	int tri_index, obj_index;
 	glm::vec3 hit_point, normal;
 	glm::vec2 uv;
@@ -219,19 +234,19 @@ void projectCaustic(glm::vec3 ray_o, glm::vec3 ray_t, glm::vec3 color,
 
 
 __device__ __host__
-glm::vec3 lighting(glm::vec3 start_camera, glm::vec3 point, glm::vec3 normal, int tri_index, glm::vec2 uv, int obj_index,
-	InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object,
-	int num_direct_light, glm::vec3* direct_lights, glm::vec3* direct_lights_color,
-	int num_point_light, glm::vec3* point_lights, glm::vec3* point_lights_color, glm::vec3 ambient,
-	uchar3* imagesBuffer, glm::ivec3* imageOffsetBuffer, glm::vec3& orig_color, glm::vec3* causticMap) {
+glm::vec3 lighting(glm::vec3& start_camera, glm::vec3& point, glm::vec3& normal, int tri_index, glm::vec2& uv, int obj_index,
+InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object,
+int num_direct_light, glm::vec3* direct_lights, glm::vec3* direct_lights_color,
+int num_point_light, glm::vec3* point_lights, glm::vec3* point_lights_color, glm::vec3& ambient,
+uchar3* imagesBuffer, glm::ivec3* imageOffsetBuffer, glm::vec3& orig_color, glm::vec3* causticMap) {
 	float kd = instanceData[obj_index].kd;
 	float ks = instanceData[obj_index].ks;//texture2D(materialSampler, vec2(1.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r;
 	float ka = instanceData[obj_index].ka;// texture2D(materialSampler, vec2(16.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r;
 	float alpha = instanceData[obj_index].alpha;// texture2D(materialSampler, vec2(20.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r;
-	
+
 	orig_color = fetchTex(uv, obj_index, imagesBuffer, imageOffsetBuffer);
-//	int tex = int(0.1 + texture2D(materialSampler, vec2(2.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r);
-//	orig_color = texture2D(renderSampler[tex], uv).rgb;
+	//	int tex = int(0.1 + texture2D(materialSampler, vec2(2.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r);
+	//	orig_color = texture2D(renderSampler[tex], uv).rgb;
 	glm::vec3 color = ka * orig_color * ambient;
 	glm::vec3 eye_dir = normalize(start_camera - point);
 	int t1, t2;
@@ -281,11 +296,11 @@ glm::vec3 lighting(glm::vec3 start_camera, glm::vec3 point, glm::vec3 normal, in
 __global__ void
 render(unsigned int *g_odata, int imgw, int imgh,
 glm::vec3 cam_up, glm::vec3 cam_forward, glm::vec3 right, glm::vec3 cam_pos, float dis_per_pix,
-	InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object,
-	int num_direct_lights, glm::vec3* direct_lights, glm::vec3* direct_lights_color,
-	int num_point_lights, glm::vec3* point_lights, glm::vec3* point_lights_color, glm::vec3 ambient,
-	uchar3* imagesBuffer, glm::ivec3* imageOffsetBuffer,
-	glm::vec3* causticMap)
+InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object,
+int num_direct_lights, glm::vec3* direct_lights, glm::vec3* direct_lights_color,
+int num_point_lights, glm::vec3* point_lights, glm::vec3* point_lights_color, glm::vec3 ambient,
+uchar3* imagesBuffer, glm::ivec3* imageOffsetBuffer,
+glm::vec3* causticMap)
 {
 	extern __shared__ uchar4 sdata[];
 
@@ -327,7 +342,7 @@ glm::vec3 cam_up, glm::vec3 cam_forward, glm::vec3 right, glm::vec3 cam_pos, flo
 			if (depth < 1e20) {
 				glm::vec3 orig_color;
 				light_stack[node] = lighting(from_stack[node], hit_point, normal, tri_index, uv, obj_index, instanceData, vertexBuffer, normalBuffer, texBuffer, num_object,
-					num_direct_lights, direct_lights, direct_lights_color, num_point_lights, point_lights, point_lights_color, ambient, 
+					num_direct_lights, direct_lights, direct_lights_color, num_point_lights, point_lights, point_lights_color, ambient,
 					imagesBuffer, imageOffsetBuffer, orig_color, causticMap);
 				color_stack[node] = orig_color;
 				normal_stack[node] = normal;
@@ -399,15 +414,15 @@ glm::vec3 cam_up, glm::vec3 cam_forward, glm::vec3 right, glm::vec3 cam_pos, flo
 			obj_index = mat_stack[node];
 			/*float ks = texture2D(materialSampler, vec2(1.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r;
 			if (hit_mat < use_path && node < PATH_DEPTH - 1 && ks > 0) {
-				normal = normal_stack[node];
-				ray_t = normalize(to_stack[node] - from_stack[node]);
-				float alpha = texture2D(materialSampler, vec2(20.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r;
-				hit_mat += 1;
-				node += 1;
-				path_state[node] = 0;
-				from_stack[node] = to_stack[node - 1];
-				to_stack[node] = phoneSample(ray_t, normal, alpha);
-				continue;
+			normal = normal_stack[node];
+			ray_t = normalize(to_stack[node] - from_stack[node]);
+			float alpha = texture2D(materialSampler, vec2(20.5 / MATERIAL_LEN, (obj_index + 0.5) / num_object)).r;
+			hit_mat += 1;
+			node += 1;
+			path_state[node] = 0;
+			from_stack[node] = to_stack[node - 1];
+			to_stack[node] = phoneSample(ray_t, normal, alpha);
+			continue;
 			}*/
 		}
 		if (path_state[node] == 3) {
@@ -415,7 +430,7 @@ glm::vec3 cam_up, glm::vec3 cam_forward, glm::vec3 right, glm::vec3 cam_pos, flo
 				break;
 			int obj_index = mat_stack[node - 1];
 			if (path_state[node - 1] == 1) {
-				light_stack[node - 1] = (1 - instanceData[obj_index].kr) * light_stack[node - 1] 
+				light_stack[node - 1] = (1 - instanceData[obj_index].kr) * light_stack[node - 1]
 					+ color_stack[node - 1] * light_stack[node] / 255.0f;
 			}
 			else
@@ -575,7 +590,7 @@ SplatCaustic(glm::vec3* caustics, glm::vec2* causticCoords, glm::ivec3* causticM
 			steps = stepY;
 		if (steps == 1)
 			steps += 1;
-//		steps *= 2;
+		//		steps *= 2;
 		float weight = 255.0 / (steps * steps);
 		float stepW = 1.0 / (steps - 1);
 		for (int i = 0; i < steps; ++i) {
@@ -653,7 +668,7 @@ cudaRender(dim3 grid, dim3 block, int sbytes, unsigned int *g_odata, int imgw, i
 		SplatCaustic << < grid, block, sbytes >> > (g_world.causticBuffer, g_world.causticCoordsBuffer, g_world.causticMapBuffer, imgw, imgh);
 		FilterCaustic << < grid, block, sbytes >> > (g_world.causticMapBuffer, g_world.causticBuffer, imgw, imgh);
 	}
-	
+
 	render << < grid, block, sbytes >> >(g_odata, imgw, imgh,
 		World::camera_up, World::camera_lookat, right, World::camera, dis_per_pix,
 		g_world.materialBuffer, g_world.vertexBuffer, g_world.normalBuffer, g_world.texBuffer, g_world.num_objects,
@@ -661,8 +676,8 @@ cudaRender(dim3 grid, dim3 block, int sbytes, unsigned int *g_odata, int imgw, i
 		g_world.lights.point_light_pos.size(), g_world.pointLightsBuffer, g_world.pointLightsColorBuffer, g_world.lights.ambient * count,
 		g_world.texImagesBuffer, g_world.texOffsetBuffer,
 		g_world.causticBuffer);
-//	filter << < grid, block, sbytes >> >(g_odata, imgw, imgh);
-/*	combineCaustic << < grid, block, sbytes >> >(g_odata, g_world.causticMapBuffer, imgw, imgh,
-		World::camera_up, World::camera_lookat, right, World::camera, dis_per_pix,
-		g_world.materialBuffer, g_world.vertexBuffer, g_world.normalBuffer, g_world.texBuffer, g_world.num_objects);*/
+	//	filter << < grid, block, sbytes >> >(g_odata, imgw, imgh);
+	/*	combineCaustic << < grid, block, sbytes >> >(g_odata, g_world.causticMapBuffer, imgw, imgh,
+	World::camera_up, World::camera_lookat, right, World::camera, dis_per_pix,
+	g_world.materialBuffer, g_world.vertexBuffer, g_world.normalBuffer, g_world.texBuffer, g_world.num_objects);*/
 }
