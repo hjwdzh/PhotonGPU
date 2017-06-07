@@ -184,8 +184,9 @@ glm::vec3 fetchTex(glm::vec2 uv, int objIndex, uchar3* imagesBuffer, glm::ivec3*
 }
 
 __device__ __host__
-glm::vec3 projectCaustic(glm::vec3 ray_o, glm::vec3 ray_t,
-	InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object) {
+void projectCaustic(glm::vec3 ray_o, glm::vec3 ray_t, glm::vec3 color,
+	InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object,
+	glm::vec3& light, glm::vec2& coords) {
 	int tri_index, obj_index;
 	glm::vec4 hit_point, normal;
 	glm::vec2 uv;
@@ -223,9 +224,13 @@ glm::vec3 projectCaustic(glm::vec3 ray_o, glm::vec3 ray_t,
 	if (obj_index == 0 && steps > 0) {
 		float x = (hit_point.x - CAUSTIC_X_MIN) / CAUSTIC_MAP_DIS;
 		float y = (hit_point.z - CAUSTIC_X_MIN) / CAUSTIC_MAP_DIS;
-		return glm::vec3(x, y, intensity);
+		coords = glm::vec2(x, y);
+		light = intensity * color;
 	}
-	return glm::vec3(-1, -1, 0);
+	else {
+		coords = glm::vec2(-1, -1);
+		light = glm::vec3(0, 0, 0);
+	}
 }
 
 
@@ -491,7 +496,7 @@ ClearCausticMap(glm::ivec3 *g_odata, int imgw, int imgh) {
 }
 
 __global__ void
-CausticRender(glm::vec3 *causticMap, int imgw, int imgh,
+CausticRender(glm::vec3 *causticMap, glm::vec2* cuasticCoords, int imgw, int imgh,
 InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object,
 glm::vec3 dir, glm::vec3 color) {
 	int tx = threadIdx.x;
@@ -501,7 +506,8 @@ glm::vec3 dir, glm::vec3 color) {
 	int x = blockIdx.x*bw + tx;
 	int y = blockIdx.y*bh + ty;
 	glm::vec3 point(x * CAUSTIC_MAP_DIS + CAUSTIC_X_MIN, 0, y * CAUSTIC_MAP_DIS + CAUSTIC_X_MIN);
-	causticMap[y * imgw + x] = projectCaustic(point - dir * 1000.0f, dir, instanceData, vertexBuffer, normalBuffer, texBuffer, num_object);
+	projectCaustic(point - dir * 1000.0f, dir, color, instanceData, vertexBuffer, normalBuffer, texBuffer, num_object,
+		causticMap[y * imgw + x], cuasticCoords[y * imgw + x]);
 }
 
 
@@ -536,13 +542,13 @@ InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, gl
 			np.y = clamp(np.y, 0.f, 255.f);
 			np.z = clamp(np.z, 0.f, 255.f);
 			np = glm::vec3(255, 0, 0);
-			g_odata[y * imgw + x] = rgbToInt(p.x, p.x, p.x);
+			g_odata[y * imgw + x] = rgbToInt(p.x, p.y, p.z);
 		}
 	}
 }
 
 __global__ void
-SplatCaustic(glm::vec3* caustics, glm::ivec3* causticMaps, int imgw, int imgh) {
+SplatCaustic(glm::vec3* caustics, glm::vec2* causticCoords, glm::ivec3* causticMaps, int imgw, int imgh) {
 	int tx = threadIdx.x;
 	int ty = threadIdx.y;
 	int bw = blockDim.x;
@@ -558,8 +564,8 @@ SplatCaustic(glm::vec3* caustics, glm::ivec3* causticMaps, int imgw, int imgh) {
 		id[3] = id[2] + 1;
 		float minX = 1e20f, maxX = -1e20f, minY = 1e20f, maxY = -1e20f;
 		for (int i = 0; i < 4; ++i) {
-			auto& p = caustics[id[i]];
-			if (caustics[id[i]].x < 0)
+			auto& p = causticCoords[id[i]];
+			if (causticCoords[id[i]].x < 0)
 				return;
 			if (p.x < minX)
 				minX = p.x;
@@ -590,9 +596,13 @@ SplatCaustic(glm::vec3* caustics, glm::ivec3* causticMaps, int imgw, int imgh) {
 				float wy = stepW * i;
 				glm::vec3 interp = (caustics[id[0]] * (1 - wx) + caustics[id[1]] * wx) * (1 - wy)
 					+ (caustics[id[2]] * (1 - wx) + caustics[id[3]] * wx) * wy;
-				int nx = interp.x, ny = interp.y;
+				glm::vec2 interp_coords = (causticCoords[id[0]] * (1 - wx) + causticCoords[id[1]] * wx) * (1 - wy)
+					+ (causticCoords[id[2]] * (1 - wx) + causticCoords[id[3]] * wx) * wy;
+				int nx = interp_coords.x, ny = interp_coords.y;
 				if (nx >= 0 && nx < imgw && ny >= 0 && ny < imgh) {
-					atomicAdd(&causticMaps[ny * imgw + nx].x, interp.z * weight);
+					atomicAdd(&causticMaps[ny * imgw + nx].x, interp.x * weight);
+					atomicAdd(&causticMaps[ny * imgw + nx].y, interp.y * weight);
+					atomicAdd(&causticMaps[ny * imgw + nx].z, interp.z * weight);
 				}
 			}
 		}
@@ -607,10 +617,10 @@ cudaRender(dim3 grid, dim3 block, int sbytes, unsigned int *g_odata, int imgw, i
 	glm::vec3 right = glm::cross(World::camera_lookat, World::camera_up);
 	ClearCausticMap << < grid, block, sbytes >> >(g_world.causticMapBuffer, imgw, imgh);
 	for (int i = 0; i < g_world.lights.direct_light_dir.size(); ++i) {
-		CausticRender << < grid, block, sbytes >> > (g_world.causticBuffer, imgw, imgh,
+		CausticRender << < grid, block, sbytes >> > (g_world.causticBuffer, g_world.causticCoordsBuffer, imgw, imgh,
 			g_world.materialBuffer, g_world.vertexBuffer, g_world.normalBuffer, g_world.texBuffer, g_world.num_objects,
 			g_world.lights.direct_light_dir[i], g_world.lights.direct_light_color[i]);
-		SplatCaustic << < grid, block, sbytes >> > (g_world.causticBuffer, g_world.causticMapBuffer, imgw, imgh);
+		SplatCaustic << < grid, block, sbytes >> > (g_world.causticBuffer, g_world.causticCoordsBuffer, g_world.causticMapBuffer, imgw, imgh);
 	}
 	render << < grid, block, sbytes >> >(g_odata, imgw, imgh,
 		World::camera_up, World::camera_lookat, right, World::camera, dis_per_pix,

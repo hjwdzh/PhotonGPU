@@ -54,6 +54,7 @@ public:
 	glm::ivec3* texOffsetBuffer;
 	glm::vec3* causticBuffer;
 	glm::ivec3* causticMapBuffer;
+	glm::vec2* causticCoordsBuffer;
 };
 
 extern World g_world;

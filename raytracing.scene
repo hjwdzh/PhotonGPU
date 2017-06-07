@@ -9,7 +9,7 @@ ambient
 
 direct_light
 	-dir 0.5774 -0.5774 -0.5774
-	-color 0.5 0.5 0.5
+	-color 0.8 0.6 0.2
 
 direct_light
 	-dir -0.5774 -0.5774 -0.5774
@@ -83,7 +83,7 @@ plane.obj
 	-offset 0 500 -1950
 	-tex sky_back.bmp
 
-sphere.obj
+dragon.obj
 	-ka 0.5
 	-kd 0
 	-kf 0.8
@@ -91,5 +91,5 @@ sphere.obj
 	-nr 1.5
 	-ks 0
 	-scale 5 5 5
-	-offset 0 5.01 0
+	-offset 0 0 0
 	-tex white.bmp
