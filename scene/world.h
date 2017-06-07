@@ -7,11 +7,9 @@
 struct InstanceData
 {
 	float kd, ks;
-	glm::vec3 offset;
-	glm::vec3 axisX, axisY;
-	glm::vec3 scale;
 	int s;
 	float ka, kr, kf, nr, alpha;
+	glm::vec3 minPos, maxPos;
 };
 class World
 {

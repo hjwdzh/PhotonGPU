@@ -24,18 +24,19 @@ void World::GenerateGeometries()
 	for (int i = 0; i < num_objects; ++i) {
 		m_ptr->kd = objects[i]->kd;
 		m_ptr->ks = objects[i]->ks;
-		m_ptr->offset[0] = objects[i]->offset.x;
-		m_ptr->offset[1] = objects[i]->offset.y;
-		m_ptr->offset[2] = objects[i]->offset.z;
-		m_ptr->axisX[0] = objects[i]->x_axis.x;
-		m_ptr->axisX[1] = objects[i]->x_axis.y;
-		m_ptr->axisX[2] = objects[i]->x_axis.z;
-		m_ptr->axisY[0] = objects[i]->y_axis.x;
-		m_ptr->axisY[1] = objects[i]->y_axis.y;
-		m_ptr->axisY[2] = objects[i]->y_axis.z;
-		m_ptr->scale[0] = objects[i]->s.x;
-		m_ptr->scale[1] = objects[i]->s.y;
-		m_ptr->scale[2] = objects[i]->s.z;
+		glm::vec3 x, axisX, axisY, scale;
+		x[0] = objects[i]->offset.x;
+		x[1] = objects[i]->offset.y;
+		x[2] = objects[i]->offset.z;
+		axisX[0] = objects[i]->x_axis.x;
+		axisX[1] = objects[i]->x_axis.y;
+		axisX[2] = objects[i]->x_axis.z;
+		axisY[0] = objects[i]->y_axis.x;
+		axisY[1] = objects[i]->y_axis.y;
+		axisY[2] = objects[i]->y_axis.z;
+		scale[0] = objects[i]->s.x;
+		scale[1] = objects[i]->s.y;
+		scale[2] = objects[i]->s.z;
 		for (int j = s / 3; j < s / 3 + objects[i]->vertex.size() / 3; ++j)
 			index_buffer[j] = i;
 		s += objects[i]->vertex.size();
@@ -45,24 +46,27 @@ void World::GenerateGeometries()
 		m_ptr->kf = objects[i]->kf;
 		m_ptr->nr = objects[i]->nr;
 		m_ptr->alpha = objects[i]->alpha;
-		m_ptr++;
 
-		glm::vec3& x = material[i].offset;
-		glm::vec3& axisX = material[i].axisX;
-		glm::vec3& axisY = material[i].axisY;
-		glm::vec3& axisZ = glm::cross(axisX, axisY);
-		glm::vec3& scale = material[i].scale;
-
+		auto axisZ = glm::cross(axisX, axisY);
 		glm::mat4 rotate = glm::mat4(glm::vec4(axisX, 0), glm::vec4(axisY, 0), glm::vec4(axisZ, 0), glm::vec4(0, 0, 0, 1));
 		glm::mat4 convert = glm::mat4(glm::vec4(1, 0, 0, 0), glm::vec4(0, 1, 0, 0), glm::vec4(0, 0, 1, 0), glm::vec4(x, 1))
 			* rotate
 			* glm::mat4(glm::vec4(scale.x, 0, 0, 0), glm::vec4(0, scale.y, 0, 0), glm::vec4(0, 0, scale.z, 0), glm::vec4(0, 0, 0, 1));
-
+		m_ptr->minPos = glm::vec3(1e30, 1e30, 1e30);
+		m_ptr->maxPos = glm::vec3(-1e30, -1e30, -1e30);
 		for (auto& v : objects[i]->vertex) {
 			glm::vec4 v4(v, 1);
 			v4 = convert * v4;
 			v = glm::vec3(v4.x, v4.y, v4.z);
+			for (int i = 0; i < 3; ++i) {
+				m_ptr->minPos[i] = std::min(v[i], m_ptr->minPos[i]);
+				m_ptr->maxPos[i] = std::max(v[i], m_ptr->maxPos[i]);
+			}
 		}
+		m_ptr->minPos -= glm::vec3(1,1,1);
+		m_ptr->maxPos += glm::vec3(1,1,1);
+		m_ptr++;
+
 		for (auto& n : objects[i]->normal) {
 			glm::vec4 n4(n, 0);
 			n4 = convert * n4;
