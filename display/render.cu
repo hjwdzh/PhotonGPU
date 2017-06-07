@@ -95,23 +95,33 @@ __device__ __host__
 int BoundingBoxIntersect(glm::vec3& ray_o, glm::vec3& ray_t, glm::vec3& minP, glm::vec3& maxP) {
 	auto r = ray_t + glm::vec3(1e-6, 1e-6, 1e-6);
 	auto rinv = glm::vec3(1 / r.x, 1 / r.y, 1 / r.z);
-	double tx1 = (minP.x - ray_o.x)*rinv.x;
-	double tx2 = (maxP.x - ray_o.x)*rinv.x;
+	float tx1 = (minP.x - ray_o.x)*rinv.x;
+	float tx2 = (maxP.x - ray_o.x)*rinv.x;
+	float tmin, tmax;
+	if (rinv.x > 0)
+		tmin = tx1, tmax = tx2;
+	else
+		tmin = tx2, tmax = tx1;
 
-	double tmin = min(tx1, tx2);
-	double tmax = max(tx1, tx2);
+	float ty1 = (minP.y - ray_o.y)*rinv.y;
+	float ty2 = (maxP.y - ray_o.y)*rinv.y;
 
-	double ty1 = (minP.y - ray_o.y)*rinv.y;
-	double ty2 = (maxP.y - ray_o.y)*rinv.y;
+	if (rinv.y > 0)
+		tmin = max(tmin, ty1),
+		tmax = min(tmax, ty2);
+	else
+		tmin = max(tmin, ty2),
+		tmax = min(tmax, ty1);
 
-	tmin = max(tmin, min(ty1, ty2));
-	tmax = min(tmax, max(ty1, ty2));
-	double tz1 = (minP.z - ray_o.z)*rinv.z;
-	double tz2 = (maxP.z - ray_o.z)*rinv.z;
+	float tz1 = (minP.z - ray_o.z)*rinv.z;
+	float tz2 = (maxP.z - ray_o.z)*rinv.z;
 
-	tmin = max(tmin, min(tz1, tz2));
-	tmax = min(tmax, max(tz1, tz2));
-
+	if (rinv.z > 0)
+		tmin = max(tmin, tz1),
+		tmax = min(tmax, tz2);
+	else
+		tmin = max(tmin, tz2),
+		tmax = min(tmax, tz1);
 	return tmax >= tmin;
 
 }
@@ -125,7 +135,7 @@ InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, gl
 	int j = 0;
 	for (int k = 0; k < num_object; ++k) {
 		int next_object = instanceData[k].s;
-		if (!BoundingBoxIntersect(ray_o, ray_t, instanceData[k].minPos, instanceData[k].maxPos)) {
+		if ((k < 1 || k >= 7) && !BoundingBoxIntersect(ray_o, ray_t, instanceData[k].minPos, instanceData[k].maxPos)) {
 			j = next_object;
 			continue;
 		}
@@ -335,7 +345,6 @@ glm::vec3* causticMap)
 	glm::vec3 ray_d = glm::normalize(cam_forward + (x - imgw / 2) * dis_per_pix * right + (y - imgh / 2) * dis_per_pix * cam_up);
 	glm::vec3 color(0, 0, 0);
 	int tri_index, obj_index;
-
 	int path_state[PATH_DEPTH];
 	int mat_stack[PATH_DEPTH];
 	glm::vec3 light_stack[PATH_DEPTH];
