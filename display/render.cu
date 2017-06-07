@@ -86,44 +86,23 @@ glm::vec3 v0, glm::vec3 v1, glm::vec3 v2, float& u, float& v) {
 }
 
 __device__ __host__
-float tracing(glm::vec3 ray_o_o, glm::vec3 ray_t_o, float shadow, int& tri, int& obj, glm::vec4& hit_point, glm::vec2& uv, glm::vec4& normal,
+float tracing(glm::vec3 ray_o, glm::vec3 ray_t, float shadow, int& tri, int& obj, glm::vec3& hit_point, glm::vec2& uv, glm::vec3& normal,
 	InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object) {
 	float depth = 1e30;
 	obj = -1;
 	tri = -1;
 	int j = 0;
 	for (int k = 0; k < num_object; ++k) {
-		glm::vec3& x = instanceData[k].offset;
-		glm::vec3& axisX = instanceData[k].axisX;
-		glm::vec3& axisY = instanceData[k].axisY;
-		glm::vec3& axisZ = glm::cross(axisX, axisY);
-		glm::vec3& scale = instanceData[k].scale;
-
-		glm::mat4 rotate = glm::mat4(glm::vec4(axisX, 0), glm::vec4(axisY, 0), glm::vec4(axisZ, 0), glm::vec4(0, 0, 0, 1));
-		glm::mat4 convert = glm::mat4(glm::vec4(1, 0, 0, 0), glm::vec4(0, 1, 0, 0), glm::vec4(0, 0, 1, 0), glm::vec4(x, 1))
-			* rotate
-			* glm::mat4(glm::vec4(scale.x, 0, 0, 0), glm::vec4(0, scale.y, 0, 0), glm::vec4(0, 0, scale.z, 0), glm::vec4(0, 0, 0, 1));
-		glm::mat4 inv_convert = glm::mat4(glm::vec4(1 / scale.x, 0, 0, 0), glm::vec4(0, 1 / scale.y, 0, 0), glm::vec4(0, 0, 1 / scale.z, 0), glm::vec4(0, 0, 0, 1))
-			* glm::transpose(rotate)
-			* glm::mat4(glm::vec4(1, 0, 0, 0), glm::vec4(0, 1, 0, 0), glm::vec4(0, 0, 1, 0), glm::vec4(-x, 1));
-
-		glm::vec4 ray_o4 = (inv_convert * glm::vec4(ray_o_o, 1));
-		glm::vec4 ray_t4 = inv_convert * glm::vec4(ray_t_o, 0);
-		float len = glm::length(ray_t4);
-		glm::vec3 ray_o(ray_o4.x, ray_o4.y, ray_o4.z);
-		glm::vec3 ray_t(ray_t4.x / len, ray_t4.y / len, ray_t4.z / len);
 		int next_object = instanceData[k].s;
 		while (j < next_object) {
-			if (j == 1263)
-				j = j;
 			glm::vec3& v1 = vertexBuffer[j];
 			glm::vec3& v2 = vertexBuffer[j + 1];
 			glm::vec3& v3 = vertexBuffer[j + 2];
 			float u, v;
-			float t = rayIntersectsTriangle(ray_o, ray_t, v1, v2, v3, u, v) / len;
+			float t = rayIntersectsTriangle(ray_o, ray_t, v1, v2, v3, u, v);
 			if (t > 1e-2 && t < depth) {
 				depth = t;
-				hit_point = (convert * (ray_o4 + ray_t4 * depth));
+				hit_point = ((ray_o + ray_t * depth));
 				if (shadow >= 0) {
 					if (t < shadow) {
 						return t;
@@ -135,7 +114,7 @@ float tracing(glm::vec3 ray_o_o, glm::vec3 ray_t_o, float shadow, int& tri, int&
 					glm::vec3& n1 = normalBuffer[j];
 					glm::vec3& n2 = normalBuffer[j + 1];
 					glm::vec3& n3 = normalBuffer[j + 2];
-					normal = (convert * glm::vec4(u * (n2 - n1) + v * (n3 - n1) + n1, 0));
+					normal = u * (n2 - n1) + v * (n3 - n1) + n1;
 					glm::vec2& uv1 = texBuffer[j];
 					glm::vec2& uv2 = texBuffer[j + 1];
 					glm::vec2& uv3 = texBuffer[j + 2];
@@ -188,7 +167,7 @@ void projectCaustic(glm::vec3 ray_o, glm::vec3 ray_t, glm::vec3 color,
 	InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object,
 	glm::vec3& light, glm::vec2& coords, uchar3* texImages, glm::ivec3* imageOffsets) {
 	int tri_index, obj_index;
-	glm::vec4 hit_point, normal;
+	glm::vec3 hit_point, normal;
 	glm::vec2 uv;
 	float depth = tracing(ray_o, ray_t, -1, tri_index, obj_index, hit_point, uv, normal, instanceData, vertexBuffer, normalBuffer, texBuffer, num_object);
 	glm::vec3 orig_color = fetchTex(uv, obj_index, texImages, imageOffsets) / 255.0f;
@@ -197,19 +176,18 @@ void projectCaustic(glm::vec3 ray_o, glm::vec3 ray_t, glm::vec3 color,
 	while (depth < 1e20 && (instanceData[obj_index].kr != 0 || instanceData[obj_index].kf != 0)) {
 		if (instanceData[obj_index].kf != 0) {
 			float nr = instanceData[obj_index].nr;
-			glm::vec3 normal3(normal.x, normal.y, normal.z);
-			float cost = glm::dot(normal3, ray_t);
+			float cost = glm::dot(normal, ray_t);
 			if (cost < 0) {
 				nr = 1 / nr;
 				cost = -cost;
 			}
 			else {
-				normal3 = -normal3;
+				normal = -normal;
 			}
 			float rootContent = 1 - nr * nr * (1 - cost * cost);
 			if (rootContent >= 0) {
 				ray_o = glm::vec3(hit_point.x, hit_point.y, hit_point.z);
-				ray_t = (nr * cost - sqrt(rootContent)) * normal3 + nr * ray_t;
+				ray_t = (nr * cost - sqrt(rootContent)) * normal + nr * ray_t;
 				intensity *= instanceData[obj_index].kf;
 			}
 			else {
@@ -253,7 +231,7 @@ glm::vec3 lighting(glm::vec3 start_camera, glm::vec3 point, glm::vec3 normal, in
 	glm::vec3 eye_dir = normalize(start_camera - point);
 	int t1, t2;
 	glm::vec2 v1;
-	glm::vec4 v2, v3;
+	glm::vec3 v2, v3;
 	for (int i = 0; i < num_direct_light; ++i) {
 		float intensity = glm::dot(-direct_lights[i], normal) * glm::dot(eye_dir, normal);
 		if (intensity < 0)
@@ -333,35 +311,31 @@ glm::vec3 cam_up, glm::vec3 cam_forward, glm::vec3 right, glm::vec3 cam_pos, flo
 	light_stack[node] = glm::vec3(0, 0, 0);
 	float nr;
 	int hit_mat = 0;
-	glm::vec4 hit_point;
+	glm::vec3 hit_point;
 	glm::vec2 uv;
-	glm::vec4 normal;
-	glm::vec3 normal3;
-	glm::vec3 hit_point3;
+	glm::vec3 normal;
 	while (node >= 0) {
 		if (path_state[node] == 0) {
 			path_state[node] = 1;
 			float depth;
 			depth = tracing(from_stack[node], to_stack[node], -1, tri_index, obj_index, hit_point, uv, normal, instanceData, vertexBuffer, normalBuffer, texBuffer, num_object);
 			if (depth < 1e20) {
-				hit_point3 = glm::vec3(hit_point.x, hit_point.y, hit_point.z);
-				normal3 = glm::vec3(normal.x, normal.y, normal.z);
 				glm::vec3 orig_color;
-				light_stack[node] = lighting(from_stack[node], hit_point3, normal3, tri_index, uv, obj_index, instanceData, vertexBuffer, normalBuffer, texBuffer, num_object,
+				light_stack[node] = lighting(from_stack[node], hit_point, normal, tri_index, uv, obj_index, instanceData, vertexBuffer, normalBuffer, texBuffer, num_object,
 					num_direct_lights, direct_lights, direct_lights_color, num_point_lights, point_lights, point_lights_color, ambient, 
 					imagesBuffer, imageOffsetBuffer, orig_color, causticMap);
 				color_stack[node] = orig_color;
-				normal_stack[node] = normal3;
+				normal_stack[node] = normal;
 				ray_d = to_stack[node];
-				to_stack[node] = hit_point3;
+				to_stack[node] = hit_point;
 				mat_stack[node] = obj_index;
 				float kr = instanceData[obj_index].kr;
 				if (kr > 0 && node < PATH_DEPTH - 1) {
 					color_stack[node] = instanceData[obj_index].kr * color_stack[node];
 					node += 1;
 					path_state[node] = 0;
-					from_stack[node] = hit_point3;
-					to_stack[node] = ray_d - 2 * glm::dot(ray_d, normal3) * normal3;
+					from_stack[node] = hit_point;
+					to_stack[node] = ray_d - 2 * glm::dot(ray_d, normal) * normal;
 					light_stack[node] = glm::vec3(0, 0, 0);
 					continue;
 				}
@@ -376,15 +350,15 @@ glm::vec3 cam_up, glm::vec3 cam_forward, glm::vec3 right, glm::vec3 cam_pos, flo
 			float kf = instanceData[obj_index].kf;
 			if (kf > 0 && node < PATH_DEPTH - 1) {
 				nr = instanceData[obj_index].nr;
-				normal3 = normal_stack[node];
+				normal = normal_stack[node];
 				ray_d = glm::normalize(to_stack[node] - from_stack[node]);
-				float cost = glm::dot(normal3, ray_d);
+				float cost = glm::dot(normal, ray_d);
 				if (cost < 0) {
 					nr = 1 / nr;
 					cost = -cost;
 				}
 				else {
-					normal3 = -normal3;
+					normal = -normal;
 				}
 				float rootContent = 1 - nr * nr * (1 - cost * cost);
 				if (rootContent >= 0) {
@@ -393,7 +367,7 @@ glm::vec3 cam_up, glm::vec3 cam_forward, glm::vec3 right, glm::vec3 cam_pos, flo
 					node += 1;
 					path_state[node] = 0;
 					from_stack[node] = to_stack[node - 1];
-					to_stack[node] = (nr * cost - rootContent) * normal3 + nr * ray_d;
+					to_stack[node] = (nr * cost - rootContent) * normal + nr * ray_d;
 					light_stack[node] = glm::vec3(0, 0, 0);
 					continue;
 				}
@@ -404,7 +378,7 @@ glm::vec3 cam_up, glm::vec3 cam_forward, glm::vec3 right, glm::vec3 cam_pos, flo
 						node += 1;
 						path_state[node] = 0;
 						from_stack[node] = to_stack[node - 1];
-						to_stack[node] = ray_d - 2 * glm::dot(ray_d, normal3) * normal3;
+						to_stack[node] = ray_d - 2 * glm::dot(ray_d, normal) * normal;
 						light_stack[node] = glm::vec3(0, 0, 0);
 						continue;
 					}
@@ -446,11 +420,11 @@ glm::vec3 cam_up, glm::vec3 cam_forward, glm::vec3 right, glm::vec3 cam_pos, flo
 				}
 				else {
 					hit_mat -= 1;
-					normal3 = normal_stack[node - 1];
+					normal = normal_stack[node - 1];
 					ray_d = glm::normalize(to_stack[node - 1] - from_stack[node - 1]);
 					float alpha = instanceData[obj_index].alpha;
 					light_stack[node - 1] = (1 - instanceData[obj_index].ks) * light_stack[node - 1]
-						+ instanceData[obj_index].ks * color_stack[node - 1] * light_stack[node] * glm::dot(-ray_d, normal3) / 255.0f;
+						+ instanceData[obj_index].ks * color_stack[node - 1] * light_stack[node] * glm::dot(-ray_d, normal) / 255.0f;
 				}
 				node -= 1;
 		}
@@ -536,7 +510,7 @@ InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, gl
 	glm::vec3 color(0, 0, 0);
 	int tri_index, obj_index;
 
-	glm::vec4 hit_point, normal;
+	glm::vec3 hit_point, normal;
 	glm::vec2 uv;
 	float depth;
 	depth = tracing(ray_p, ray_d, -1, tri_index, obj_index, hit_point, uv, normal, instanceData, vertexBuffer, normalBuffer, texBuffer, num_object);

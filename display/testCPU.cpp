@@ -7,7 +7,7 @@ extern void projectCaustic(glm::vec3 ray_o, glm::vec3 ray_t,
 	InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object,
 	glm::vec3& light, glm::vec2& coords);
 
-extern float tracing(glm::vec3 ray_o_o, glm::vec3 ray_t_o, float shadow, int& tri, int& obj, glm::vec4& hit_point, glm::vec2& uv, glm::vec4& normal,
+extern float tracing(glm::vec3 ray_o_o, glm::vec3 ray_t_o, float shadow, int& tri, int& obj, glm::vec3& hit_point, glm::vec2& uv, glm::vec3& normal,
 	InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object);
 
 glm::vec3 lighting(glm::vec3 start_camera, glm::vec3 point, glm::vec3 normal, int tri_index, glm::vec2 uv, int obj_index,
@@ -44,9 +44,9 @@ void testCPU()
 			light_stack[node] = glm::vec3(0, 0, 0);
 			float nr;
 			int hit_mat = 0;
-			glm::vec4 hit_point;
+			glm::vec3 hit_point;
 			glm::vec2 uv;
-			glm::vec4 normal;
+			glm::vec3 normal;
 			glm::vec3 normal3;
 			glm::vec3 hit_point3;
 			while (node >= 0) {

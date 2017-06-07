@@ -22,13 +22,6 @@ void World::GenerateGeometries()
 	InstanceData* m_ptr = material.data();
 	int s = 0;
 	for (int i = 0; i < num_objects; ++i) {
-		memcpy(v_ptr, objects[i]->vertex.data(), objects[i]->vertex.size() * 3 * sizeof(float));
-		v_ptr += objects[i]->vertex.size() * 3;
-		memcpy(n_ptr, objects[i]->normal.data(), objects[i]->normal.size() * 3 * sizeof(float));
-		n_ptr += objects[i]->normal.size() * 3;
-
-		memcpy(t_ptr, objects[i]->uv.data(), objects[i]->uv.size() * 2 * sizeof(float));
-		t_ptr += objects[i]->uv.size() * 2;
 		m_ptr->kd = objects[i]->kd;
 		m_ptr->ks = objects[i]->ks;
 		m_ptr->offset[0] = objects[i]->offset.x;
@@ -53,6 +46,36 @@ void World::GenerateGeometries()
 		m_ptr->nr = objects[i]->nr;
 		m_ptr->alpha = objects[i]->alpha;
 		m_ptr++;
+
+		glm::vec3& x = material[i].offset;
+		glm::vec3& axisX = material[i].axisX;
+		glm::vec3& axisY = material[i].axisY;
+		glm::vec3& axisZ = glm::cross(axisX, axisY);
+		glm::vec3& scale = material[i].scale;
+
+		glm::mat4 rotate = glm::mat4(glm::vec4(axisX, 0), glm::vec4(axisY, 0), glm::vec4(axisZ, 0), glm::vec4(0, 0, 0, 1));
+		glm::mat4 convert = glm::mat4(glm::vec4(1, 0, 0, 0), glm::vec4(0, 1, 0, 0), glm::vec4(0, 0, 1, 0), glm::vec4(x, 1))
+			* rotate
+			* glm::mat4(glm::vec4(scale.x, 0, 0, 0), glm::vec4(0, scale.y, 0, 0), glm::vec4(0, 0, scale.z, 0), glm::vec4(0, 0, 0, 1));
+
+		for (auto& v : objects[i]->vertex) {
+			glm::vec4 v4(v, 1);
+			v4 = convert * v4;
+			v = glm::vec3(v4.x, v4.y, v4.z);
+		}
+		for (auto& n : objects[i]->normal) {
+			glm::vec4 n4(n, 0);
+			n4 = convert * n4;
+			n = glm::normalize(glm::vec3(n4.x, n4.y, n4.z));
+		}
+		memcpy(v_ptr, objects[i]->vertex.data(), objects[i]->vertex.size() * 3 * sizeof(float));
+		v_ptr += objects[i]->vertex.size() * 3;
+		memcpy(n_ptr, objects[i]->normal.data(), objects[i]->normal.size() * 3 * sizeof(float));
+		n_ptr += objects[i]->normal.size() * 3;
+
+		memcpy(t_ptr, objects[i]->uv.data(), objects[i]->uv.size() * 2 * sizeof(float));
+		t_ptr += objects[i]->uv.size() * 2;
+
 	}
 
 	tex_offsets.resize(objects.size());
