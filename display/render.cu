@@ -212,7 +212,7 @@ float box_intersect(BVHData* bvh_node, glm::vec3& ray_o, glm::vec3& ray_t) {
 		tmp = b1; b1 = b2; b2 = tmp;
 	}
 	c1 = (bvh_node->minCorner.z - ray_o.z);
-	c2 = (bvh_node->maxCorner.y - ray_o.z);
+	c2 = (bvh_node->maxCorner.z - ray_o.z);
 	if (ray_t.z < 1e-6 && ray_t.z > -1e-6) {
 		if (c1 * c2 > 1e-4)
 			return -1;
@@ -301,10 +301,12 @@ float bvh_intersect(glm::vec3& ray_o, glm::vec3& ray_t, int& index, float& u, fl
 }
 
 /* Tracing Algorithm */
+//#define BVH_
 __device__ __host__
 float tracing(glm::vec3& ray_o, glm::vec3& ray_t, float shadow, int& tri, int& obj, glm::vec3& hit_point, glm::vec2& uv, glm::vec3& normal,
 InstanceData* instanceData, glm::vec3* vertexBuffer, glm::vec3* normalBuffer, glm::vec2* texBuffer, int num_object,
 BVHData* bvh) {
+#ifndef BVH_
 	float depth = 1e30;
 	obj = -1;
 	tri = -1;
@@ -347,8 +349,8 @@ BVHData* bvh) {
 	}
 	normal = normalize(normal);
 	return depth;
-	/*
-	float depth = 1e20;
+#else
+	float depth = 1e30;
 	obj = -1;
 	tri = -1;
 	for (int k = 0; k < num_object; ++k) {
@@ -378,7 +380,8 @@ BVHData* bvh) {
 		}
 	}
 	normal = normalize(normal);
-	return depth;*/
+	return depth;
+#endif
 }
 
 __device__ __host__
