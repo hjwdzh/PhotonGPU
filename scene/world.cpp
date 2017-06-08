@@ -137,4 +137,8 @@ void World::GenerateGeometries()
 
 	cudaMalloc(&bvhDataBuffer, sizeof(BVHData) * bvhData.size());
 	cudaMemcpy(bvhDataBuffer, bvhData.data(), sizeof(BVHData) * bvhData.size(), cudaMemcpyHostToDevice);
+
+	cv::Mat img = cv::imread("tex\\environment.jpg");
+	cudaMalloc(&environmentBuffer, sizeof(uchar3) * img.rows * img.cols);
+	cudaMemcpy(environmentBuffer, img.data, sizeof(uchar3) * img.cols * img.rows, cudaMemcpyHostToDevice);
 }

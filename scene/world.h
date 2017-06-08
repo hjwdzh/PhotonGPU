@@ -50,11 +50,12 @@ public:
 	glm::vec3 *pointLightsColorBuffer;
 
 	uchar3* texImagesBuffer;
+	uchar3* environmentBuffer;
 	glm::ivec3* texOffsetBuffer;
 	glm::vec3* causticBuffer;
 	glm::ivec3* causticMapBuffer;
 	glm::vec2* causticCoordsBuffer;
-
+	
 	std::vector<BVHData> bvhData;
 
 	BVHData* bvhDataBuffer;
