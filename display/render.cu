@@ -640,7 +640,7 @@ glm::vec3* causticMap, BVHData* bvh, uchar3* environment, glm::vec3* scatterMap)
 
 	uchar4 c4 = make_uchar4(light_stack[0].r, light_stack[0].g, light_stack[0].b, 255);
 	g_odata[y*imgw + x] = rgbToInt(c4.x, c4.y, c4.z);
-//	g_odata[y * imgw + x] = rgbToInt(scatterMap[y * imgw + x].x * 255, scatterMap[y * imgw + x].y * 255, scatterMap[y * imgw + x].z * 255);
+	g_odata[y * imgw + x] = rgbToInt(scatterMap[y * imgw + x].x * 255, scatterMap[y * imgw + x].y * 255, scatterMap[y * imgw + x].z * 255);
 }
 
 /* Filtering */
@@ -731,8 +731,8 @@ glm::vec3& light, glm::vec2& coords, uchar3* texImages, glm::ivec3* imageOffsets
 	glm::vec3 orig_color = fetchTex(uv, obj_index, texImages, imageOffsets) / 255.0f;
 	int steps = 0;
 	float intensity = 1;
-	while (depth < 1e20 && (instanceData[obj_index].kr != 0 || instanceData[obj_index].kf != 0 || instanceData[obj_index].kt != 0)) {
-		if (instanceData[obj_index].kt != 0) {
+	while (depth < 1e20 && (instanceData[obj_index].kr > 1e-3 || instanceData[obj_index].kf > 1e-3 || instanceData[obj_index].kt > 1e-3)) {
+		if (instanceData[obj_index].kt > 1e-3) {
 			float x = (hit_point.x - CAUSTIC_X_MIN) / CAUSTIC_MAP_DIS;
 			float y = (hit_point.z - CAUSTIC_X_MIN) / CAUSTIC_MAP_DIS;
 			coords = glm::vec2(x, y);
