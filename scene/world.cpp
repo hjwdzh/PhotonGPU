@@ -86,9 +86,9 @@ void World::GenerateGeometries()
 		memcpy(t_ptr, objects[i]->uv.data(), objects[i]->uv.size() * 2 * sizeof(float));
 		t_ptr += objects[i]->uv.size() * 2;
 
-		BVH* bvh = new BVH(v_ptr_o, n_ptr_o, t_ptr_o, index_ptr_o, objects[i]->vertex.size() / 3);
+		BVH* bvh = new BVH(v_ptr_o, n_ptr_o, t_ptr_o, index_ptr_o, (v_ptr - v_ptr_o) / 9);
 		std::vector<BVHData> bvh_buffer;
-		bvh->genBuffer(bvh_buffer, (v_ptr_o - vertex_buffer.data()) / 3);
+		bvh->genBuffer(bvh_buffer, 0, (v_ptr_o - vertex_buffer.data()) / 9);
 		bvhData.insert(bvhData.end(), bvh_buffer.begin(), bvh_buffer.end());
 		bvh_offset = bvhData.size();
 		delete bvh;

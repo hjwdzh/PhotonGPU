@@ -57,7 +57,7 @@ public:
 
 	std::vector<BVHData> bvhData;
 
-	float* bvhDataBuffer;
+	BVHData* bvhDataBuffer;
 };
 
 extern World g_world;
