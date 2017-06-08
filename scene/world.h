@@ -13,7 +13,7 @@
 #define CAUSTIC_X_MIN -12.8f
 #define CAUSTIC_MAP_DIS 0.05f
 #define SCATTER_RADIUS 0.2f
-
+#define CAUSTIC_W 512
 struct InstanceData
 {
 	float kd, ks;

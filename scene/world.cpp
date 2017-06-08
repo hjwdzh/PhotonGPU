@@ -360,7 +360,7 @@ void World::GenerateGeometries()
 	cv::Mat img = cv::imread("tex\\environment.jpg");
 	cudaMalloc(&environmentBuffer, sizeof(uchar3) * img.rows * img.cols);
 	cudaMemcpy(environmentBuffer, img.data, sizeof(uchar3) * img.cols * img.rows, cudaMemcpyHostToDevice);
-	cudaMalloc(&scatterBuffer, sizeof(glm::vec3) * img.cols * img.rows);
-
+	cudaMalloc(&scatterBuffer, sizeof(glm::vec3) * CAUSTIC_W*CAUSTIC_W);
+	cudaMalloc(&scatterPosBuffer, sizeof(glm::vec3)*CAUSTIC_W*CAUSTIC_W);
 //	ProcessScattering();
 }
