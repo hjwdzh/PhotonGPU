@@ -5,11 +5,20 @@
 #include "geometry.h"
 #include "../bvh/bvh.h"
 #include "../cuda-opengl.h"
+
+#define PATH_DEPTH 10
+#define PATH_MAX_DEPTH 3
+#define NUM_SAMPLE 1
+
+#define CAUSTIC_X_MIN -12.8f
+#define CAUSTIC_MAP_DIS 0.05f
+#define SCATTER_RADIUS 0.2f
+
 struct InstanceData
 {
 	float kd, ks;
 	int s, bvh_offset;
-	float ka, kr, kf, nr, alpha;
+	float ka, kr, kf, nr, alpha, kt;
 	glm::vec3 minPos, maxPos;
 };
 class World
@@ -52,13 +61,19 @@ public:
 	uchar3* texImagesBuffer;
 	uchar3* environmentBuffer;
 	glm::ivec3* texOffsetBuffer;
+
 	glm::vec3* causticBuffer;
 	glm::ivec3* causticMapBuffer;
 	glm::vec2* causticCoordsBuffer;
-	
+
+	glm::vec3* scatterBuffer;
+	glm::vec3* scatterPosBuffer;
+
 	std::vector<BVHData> bvhData;
 
 	BVHData* bvhDataBuffer;
+
+	void ProcessScattering();
 };
 
 extern World g_world;

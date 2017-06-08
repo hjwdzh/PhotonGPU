@@ -16,6 +16,9 @@ public:
 		y_axis = glm::vec4(0,1,0,0);
 		offset = glm::vec3(0,0,0);
 		s = glm::vec3(1,1,1);
+		kt = 0;
+		kr = 0;
+		kf = 0;
 		rotate = glm::mat4(1.0f);
 	}
 	Geometry(const char* filename, float _kd = 0.6, float _ks = 0.8, float _kr = 0, float _kf = 0, float _ka = 1, float _alpha = 20, bool smooth = false) {
@@ -81,7 +84,7 @@ public:
 	vector<glm::vec3> vertex, t_vertex;
 	vector<glm::vec2> uv;
 	vector<glm::vec3> normal, t_normal;
-	float kd, ks, ka, kr, kf, nr, alpha;
+	float kd, ks, ka, kr, kf, nr, alpha, kt;
 	glm::vec3 offset;
 	glm::vec4 x_axis;
 	glm::vec4 y_axis;

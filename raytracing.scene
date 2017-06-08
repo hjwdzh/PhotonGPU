@@ -80,6 +80,16 @@ plane.obj
 	-offset 0 500 -1950
 	-tex white.bmp
 
+swan1.obj
+	-ka 0.3
+	-kf 0.6
+	-kt 1
+	-nr 1.5
+	-ks 0
+	-scale 1 1 1
+	-offset 0 0 0
+	-tex jade.jpg
+
 swan2.obj
 	-ka 0.0
 	-kd 0
@@ -89,12 +99,3 @@ swan2.obj
 	-scale 1 1 1
 	-offset 0 0 0
 	-tex white.bmp
-
-swan1.obj
-	-ka 0.3
-	-kf 0.4
-	-nr 1.5
-	-ks 0
-	-scale 1 1 1
-	-offset 0 0 0
-	-tex jade.jpg

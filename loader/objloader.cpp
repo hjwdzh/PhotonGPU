@@ -272,6 +272,10 @@ bool loadScene(
 			sscanf(buffer, "%f", &c->ks);
 			continue;
 		}
+		if (strcmp(buffer, "-kt") == 0) {
+			is >> buffer;
+			sscanf(buffer, "%f", &c->kt);
+		}
 		if (strcmp(buffer, "-ka") == 0) {
 			is >> buffer;
 			sscanf(buffer, "%f", &c->ka);
