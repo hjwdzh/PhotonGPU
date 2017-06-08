@@ -16,7 +16,7 @@ point_light
 	-color 1 1 1
 
 table.obj
-	-ka 0.5
+	-ka 0.8
 	-kd 0.8
 	-ks 1
 	-alpha 20
@@ -82,18 +82,16 @@ plane.obj
 
 swan1.obj
 	-ka 0.3
-	-kf 0.6
 	-kt 1
-	-nr 1.5
 	-ks 0
 	-scale 1 1 1
 	-offset 0 0 0
-	-tex jade.jpg
+	-tex jade_edit.jpg
 
 swan2.obj
 	-ka 0.0
 	-kd 0
-	-kf 1.0
+	-kf 0.95
 	-nr 1.5
 	-ks 0
 	-scale 1 1 1
