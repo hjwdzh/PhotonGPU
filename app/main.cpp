@@ -1,4 +1,6 @@
 #include "../cuda-opengl.h"
+#include "../loader/objloader.h"
+#include "../scene/world.h"
 
 // Shared Library Test Functions
 #define MAX_EPSILON 10
@@ -287,6 +289,11 @@ void timerEvent(int value)
 	glutTimerFunc(REFRESH_DELAY, timerEvent, 0);
 }
 
+
+int mouse_x, mouse_y;
+int mouse_state = 0;
+glm::vec3 camera, camera_lookat, camera_up;
+
 ////////////////////////////////////////////////////////////////////////////////
 //! Keyboard events handler
 ////////////////////////////////////////////////////////////////////////////////
@@ -298,7 +305,9 @@ keyboard(unsigned char key, int /*x*/, int /*y*/)
 	case (27) :
 		Cleanup(EXIT_SUCCESS);
 		break;
-
+	case 'r':
+		mouse_state = 1;
+		break;
 	case ' ':
 		enable_cuda ^= 1;
 #ifdef USE_TEXTURE_RGBA8UI
@@ -369,8 +378,6 @@ deleteTexture(GLuint *tex)
 	*tex = 0;
 }
 
-#include "../loader/objloader.h"
-#include "../scene/world.h"
 ////////////////////////////////////////////////////////////////////////////////
 // Program main
 ////////////////////////////////////////////////////////////////////////////////
@@ -577,6 +584,58 @@ void initGLBuffers()
 	SDK_CHECK_ERROR_GL();
 }
 
+void MyMouse(int button, int state, int x, int y)
+{
+	switch (button)
+	{
+	case GLUT_LEFT_BUTTON:
+		if (state == GLUT_DOWN) {
+			mouse_state = 0;
+		}
+		break;
+	case GLUT_RIGHT_BUTTON:
+		if (state == GLUT_DOWN) {
+			if (mouse_state == 2) {
+				g_world.camera = camera;
+				g_world.camera_lookat = camera_lookat;
+				g_world.camera_up = camera_up;
+			}
+			mouse_state = 0;
+		}
+	}
+}
+void MyMotion(int x, int y) {
+	printf("%lf %lf %lf\n", camera_lookat.x, camera_lookat.y, camera_lookat.z);
+	if (mouse_state == 1) {
+		camera = g_world.camera;
+		camera_up = g_world.camera_up;
+		camera_lookat = g_world.camera_lookat;
+		mouse_state = 2;
+		mouse_x = x;
+		mouse_y = y;
+		return;
+	}
+	if (mouse_state == 2) {
+		float dx = (x - mouse_x) / (float)window_width;
+		float dy = (y - mouse_y) / (float)window_width;
+		printf("%lf %lf\n", dx, dy);
+		double angle = dx * g_world.fov / 180.0 * CV_PI * 2;
+		glm::mat3 rot(1.0f);
+		rot[0][0] = cos(angle); rot[0][2] = -sin(angle);
+		rot[2][0] = sin(angle); rot[2][2] = cos(angle);
+		g_world.camera = rot * camera;
+		g_world.camera_up = rot * camera_up;
+		g_world.camera_lookat = rot * camera_lookat;
+		angle = dy * g_world.fov / 180.0 * CV_PI * 2;
+		rot = glm::mat3(1.0f);
+		rot[1][1] = cos(angle); rot[1][2] = -sin(angle);
+		rot[2][1] = sin(angle); rot[2][2] = cos(angle);
+		g_world.camera = rot * g_world.camera;
+		g_world.camera_up = rot * g_world.camera_up;
+		g_world.camera_lookat = rot * g_world.camera_lookat;
+	}
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 //! Run standard demo loop with or without GL verification
 ////////////////////////////////////////////////////////////////////////////////
@@ -599,14 +658,12 @@ runStdProgram(int argc, char **argv)
 	// register callbacks
 	glutDisplayFunc(display);
 	glutKeyboardFunc(keyboard);
+	glutMouseFunc(MyMouse);
+	glutPassiveMotionFunc(MyMotion);
 	glutReshapeFunc(reshape);
 	glutTimerFunc(REFRESH_DELAY, timerEvent, 0);
 
-	// create menu
-	glutCreateMenu(mainMenu);
-	glutAddMenuEntry("Quit (esc)", '\033');
-	glutAttachMenu(GLUT_RIGHT_BUTTON);
-
+	
 	initGLBuffers();
 #ifndef USE_TEXSUBIMAGE2D
 	initCUDABuffers();
