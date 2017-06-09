@@ -10,7 +10,6 @@ void testCPU()
 	int imgh = 512;
 	cv::Mat img = cv::Mat::zeros(imgh, imgw, CV_8UC3);
 	for (int i = 0; i < imgh; ++i) {
-		printf("%d\n", i);
 		for (int j = 0; j < imgw; ++j) {
 			float dis_per_pix = tan(World::fov * 0.5 * 3.141592654 / 180.0) / (imgw / 2);
 			glm::vec3 right = glm::cross(World::camera_lookat, World::camera_up);

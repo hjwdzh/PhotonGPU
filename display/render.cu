@@ -998,7 +998,9 @@ cudaRender(dim3 grid, dim3 block, int sbytes, unsigned int *g_odata, int imgw, i
 	dim3 grid1(CAUSTIC_W / block.x, CAUSTIC_W / block.y, 1);
 	static float angle = 0.0;
 	static float angle_dir = 1.0f;
-	angle += angle_dir;
+	if (g_world.pause) {
+		angle += angle_dir;
+	}
 	if (angle > 30.0f || angle < -30.0f)
 		angle_dir = -angle_dir;
 	float rad = angle / 180.0 *	CV_PI;

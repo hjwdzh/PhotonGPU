@@ -305,6 +305,9 @@ keyboard(unsigned char key, int /*x*/, int /*y*/)
 	case (27) :
 		Cleanup(EXIT_SUCCESS);
 		break;
+	case 'p':
+		g_world.pause = 1 - g_world.pause;
+		break;
 	case 'r':
 		mouse_state = 1;
 		break;

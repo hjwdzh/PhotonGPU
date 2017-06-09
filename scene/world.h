@@ -24,6 +24,10 @@ struct InstanceData
 class World
 {
 public:
+	World()
+		: pause(0)
+	{}
+	int pause;
 	// camera
 	static glm::vec3 camera_up, camera_lookat, camera;
 	static float fov;
