@@ -293,13 +293,17 @@ void timerEvent(int value)
 int mouse_x, mouse_y;
 int mouse_state = 0;
 glm::vec3 camera, camera_lookat, camera_up;
-
+extern glm::vec3 Inttorgb(int x);
 ////////////////////////////////////////////////////////////////////////////////
 //! Keyboard events handler
 ////////////////////////////////////////////////////////////////////////////////
 void
 keyboard(unsigned char key, int /*x*/, int /*y*/)
 {
+	std::ofstream os;
+	std::ifstream is;
+	int i, j;
+	cv::Mat img, outImg;
 	switch (key)
 	{
 	case (27) :
@@ -308,8 +312,29 @@ keyboard(unsigned char key, int /*x*/, int /*y*/)
 	case 'p':
 		g_world.pause = 1 - g_world.pause;
 		break;
+	case 's':
+		os.open("param.txt");
+		os << g_world.camera.x << " " << g_world.camera.y << " " << g_world.camera.z << " "
+			<< g_world.camera_lookat.x << " " << g_world.camera_lookat.y << " " << g_world.camera_lookat.z << " "
+			<< g_world.camera_up.x << " " << g_world.camera_up.y << " " << g_world.camera_up.z << " "
+			<< g_world.lights.direct_light_dir[0].x << " " << g_world.lights.direct_light_dir[0].y << " " << g_world.lights.direct_light_dir[0].z << "\n";
+		os.close();
+
+		break;
+	case 'l':
+		is.open("param.txt");
+		is >> g_world.camera.x >> g_world.camera.y >> g_world.camera.z >>
+			g_world.camera_lookat.x >> g_world.camera_lookat.y >> g_world.camera_lookat.z >>
+			g_world.camera_up.x >> g_world.camera_up.y >> g_world.camera_up.z >>
+			g_world.lights.direct_light_dir[0].x >> g_world.lights.direct_light_dir[0].y >> g_world.lights.direct_light_dir[0].z;
+		cudaMemcpy(g_world.directLightsBuffer, &g_world.lights.direct_light_dir[0], sizeof(glm::vec3), cudaMemcpyHostToDevice);
+		is.close();
+		break;
 	case 'r':
 		mouse_state = 1;
+		break;
+	case 'w':
+		g_world.rendering_mode = (g_world.rendering_mode + 1) % 6;
 		break;
 	case ' ':
 		enable_cuda ^= 1;
@@ -608,7 +633,6 @@ void MyMouse(int button, int state, int x, int y)
 	}
 }
 void MyMotion(int x, int y) {
-	printf("%lf %lf %lf\n", camera_lookat.x, camera_lookat.y, camera_lookat.z);
 	if (mouse_state == 1) {
 		camera = g_world.camera;
 		camera_up = g_world.camera_up;
@@ -621,7 +645,6 @@ void MyMotion(int x, int y) {
 	if (mouse_state == 2) {
 		float dx = (x - mouse_x) / (float)window_width;
 		float dy = (y - mouse_y) / (float)window_width;
-		printf("%lf %lf\n", dx, dy);
 		double angle = dx * g_world.fov / 180.0 * CV_PI * 2;
 		glm::mat3 rot(1.0f);
 		rot[0][0] = cos(angle); rot[0][2] = -sin(angle);

@@ -1,0 +1,29 @@
+1. sweet sunday: a real-time rendering framework
+
+2. Modeling the Swan
+	Model & Texture
+
+3. framework (Fully GPU: CUDA + OpenGL)
+	support point & direct light
+	3D mesh(obj), texture, rotation
+	GPU BVH
+	Rendering path: 1 Diffuse, 2 refraction, 7 reflection
+	Real-time Caustics from refraction and reflection
+	Real-time subsurface scattering
+
+4. Caustics
+	images: dragon
+			swan
+			caustic map
+
+	Method: 1. Project light to the receiver's texture image
+			2. Render the caustics by blending receivers' caustics in a local area
+
+5. Subsurface Scattering
+	images: light view photon intensity
+			subsurface scattering intensity
+			final swan
+
+	Method: 1. Store the direct photons in the light's view (photon and intersection points)
+			2. Render the scattering effect by summing up the photons (stored in light's view) which are smaller than $r$ with the dipole model.
+

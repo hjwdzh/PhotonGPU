@@ -14,6 +14,7 @@
 #define CAUSTIC_MAP_DIS 0.05f
 #define SCATTER_RADIUS 0.2f
 #define CAUSTIC_W 512
+
 struct InstanceData
 {
 	float kd, ks;
@@ -21,13 +22,15 @@ struct InstanceData
 	float ka, kr, kf, nr, alpha, kt;
 	glm::vec3 minPos, maxPos;
 };
+
 class World
 {
 public:
 	World()
-		: pause(0)
+		: pause(0), rendering_mode(0)
 	{}
 	int pause;
+	int rendering_mode;
 	// camera
 	static glm::vec3 camera_up, camera_lookat, camera;
 	static float fov;
