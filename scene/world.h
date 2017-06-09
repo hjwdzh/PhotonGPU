@@ -68,7 +68,7 @@ public:
 
 	glm::vec3* scatterBuffer;
 	glm::vec3* scatterPosBuffer;
-
+	float* softShadowBuffer, *softShadowMap;
 	std::vector<BVHData> bvhData;
 
 	BVHData* bvhDataBuffer;

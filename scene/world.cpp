@@ -349,7 +349,7 @@ void World::GenerateGeometries()
 	cudaMalloc(&texImagesBuffer, sizeof(uchar3) * tex_images.size());
 	cudaMemcpy(texImagesBuffer, tex_images.data(), sizeof(uchar3) * tex_images.size(), cudaMemcpyHostToDevice);
 
-	causticMap.resize(512 * 512);
+	causticMap.resize(CAUSTIC_W * CAUSTIC_W);
 	cudaMalloc(&causticMapBuffer, sizeof(glm::ivec3) * causticMap.size());
 	cudaMalloc(&causticBuffer, sizeof(glm::vec3) * causticMap.size());
 	cudaMalloc(&causticCoordsBuffer, sizeof(glm::vec2) * causticMap.size());
@@ -362,5 +362,7 @@ void World::GenerateGeometries()
 	cudaMemcpy(environmentBuffer, img.data, sizeof(uchar3) * img.cols * img.rows, cudaMemcpyHostToDevice);
 	cudaMalloc(&scatterBuffer, sizeof(glm::vec3) * CAUSTIC_W*CAUSTIC_W);
 	cudaMalloc(&scatterPosBuffer, sizeof(glm::vec3)*CAUSTIC_W*CAUSTIC_W);
-//	ProcessScattering();
+
+	cudaMalloc(&softShadowBuffer, sizeof(float) * CAUSTIC_W * CAUSTIC_W);
+	cudaMalloc(&softShadowMap, sizeof(float) * CAUSTIC_W * CAUSTIC_W);
 }

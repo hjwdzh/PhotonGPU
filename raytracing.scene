@@ -16,8 +16,8 @@ point_light
 	-color 1 1 1
 
 table.obj
-	-ka 0.8
-	-kd 0.8
+	-ka 0.3
+	-kd 5
 	-ks 1
 	-alpha 20
 	-scale 0.4 0.4 0.4
